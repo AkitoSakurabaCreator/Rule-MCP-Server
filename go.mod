@@ -1,4 +1,4 @@
-module rulemcpserver
+module github.com/AkitoSakurabaCreator/RuleMCPServer
 
 go 1.25.0
 
