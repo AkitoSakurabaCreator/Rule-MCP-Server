@@ -2,7 +2,7 @@
 
 # ビルド
 build:
-	go build -o rule-mcp-server .
+	go build -o rule-mcp-server ./cmd/server
 
 # テスト実行
 test:
@@ -15,16 +15,16 @@ test-coverage:
 
 # サーバー起動
 run:
-	go run .
+	go run ./cmd/server
 
 # カスタムポートでサーバー起動
 run-port:
 	@read -p "Enter port number: " port; \
-	PORT=$$port go run .
+	PORT=$$port go run ./cmd/server
 
 # 本番環境でサーバー起動
 run-prod:
-	ENVIRONMENT=production LOG_LEVEL=warn go run .
+	ENVIRONMENT=production LOG_LEVEL=warn go run ./cmd/server
 
 # クリーンアップ
 clean:

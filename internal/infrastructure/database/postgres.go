@@ -10,15 +10,15 @@ import (
 )
 
 type PostgresDatabase struct {
-	db *sql.DB
+	DB *sql.DB
 }
 
 type PostgresRuleRepository struct {
-	db *sql.DB
+	DB *sql.DB
 }
 
 type PostgresGlobalRuleRepository struct {
-	db *sql.DB
+	DB *sql.DB
 }
 
 // Ensure PostgresDatabase implements ProjectRepository
@@ -42,25 +42,25 @@ func NewPostgresDatabase(host, port, user, password, dbname string) (*PostgresDa
 	}
 
 	log.Println("Successfully connected to PostgreSQL database")
-	return &PostgresDatabase{db: db}, nil
+	return &PostgresDatabase{DB: db}, nil
 }
 
 func NewPostgresRuleRepository(db *sql.DB) *PostgresRuleRepository {
-	return &PostgresRuleRepository{db: db}
+	return &PostgresRuleRepository{DB: db}
 }
 
 func NewPostgresGlobalRuleRepository(db *sql.DB) *PostgresGlobalRuleRepository {
-	return &PostgresGlobalRuleRepository{db: db}
+	return &PostgresGlobalRuleRepository{DB: db}
 }
 
 func (d *PostgresDatabase) Close() error {
-	return d.db.Close()
+	return d.DB.Close()
 }
 
 func (d *PostgresDatabase) Create(project *domain.Project) error {
 	query := `INSERT INTO projects (project_id, name, description, language, apply_global_rules, created_at, updated_at) 
 			  VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	_, err := d.db.Exec(query, project.ProjectID, project.Name, project.Description, project.Language, project.ApplyGlobalRules, project.CreatedAt, project.UpdatedAt)
+	_, err := d.DB.Exec(query, project.ProjectID, project.Name, project.Description, project.Language, project.ApplyGlobalRules, project.CreatedAt, project.UpdatedAt)
 	return err
 }
 
@@ -69,7 +69,7 @@ func (d *PostgresDatabase) GetByID(projectID string) (*domain.Project, error) {
 			  FROM projects WHERE project_id = $1`
 	
 	var project domain.Project
-	err := d.db.QueryRow(query, projectID).Scan(
+	err := d.DB.QueryRow(query, projectID).Scan(
 		&project.ProjectID, &project.Name, &project.Description, &project.Language,
 		&project.ApplyGlobalRules, &project.CreatedAt, &project.UpdatedAt)
 	
@@ -83,7 +83,7 @@ func (d *PostgresDatabase) GetAll() ([]*domain.Project, error) {
 	query := `SELECT project_id, name, description, language, apply_global_rules, created_at, updated_at 
 			  FROM projects ORDER BY created_at DESC`
 	
-	rows, err := d.db.Query(query)
+	rows, err := d.DB.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -107,13 +107,13 @@ func (d *PostgresDatabase) GetAll() ([]*domain.Project, error) {
 func (d *PostgresDatabase) Update(project *domain.Project) error {
 	query := `UPDATE projects SET name = $2, description = $3, language = $4, apply_global_rules = $5, updated_at = $6 
 			  WHERE project_id = $1`
-	_, err := d.db.Exec(query, project.ProjectID, project.Name, project.Description, project.Language, project.ApplyGlobalRules, project.UpdatedAt)
+	_, err := d.DB.Exec(query, project.ProjectID, project.Name, project.Description, project.Language, project.ApplyGlobalRules, project.UpdatedAt)
 	return err
 }
 
 func (d *PostgresDatabase) Delete(projectID string) error {
 	query := `DELETE FROM projects WHERE project_id = $1`
-	_, err := d.db.Exec(query, projectID)
+	_, err := d.DB.Exec(query, projectID)
 	return err
 }
 
@@ -121,7 +121,7 @@ func (d *PostgresDatabase) Delete(projectID string) error {
 func (d *PostgresRuleRepository) Create(rule *domain.Rule) error {
 	query := `INSERT INTO rules (project_id, rule_id, name, description, type, severity, pattern, message, is_active) 
 			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-	_, err := d.db.Exec(query, rule.ProjectID, rule.RuleID, rule.Name, rule.Description, rule.Type, rule.Severity, rule.Pattern, rule.Message, rule.IsActive)
+	_, err := d.DB.Exec(query, rule.ProjectID, rule.RuleID, rule.Name, rule.Description, rule.Type, rule.Severity, rule.Pattern, rule.Message, rule.IsActive)
 	return err
 }
 
@@ -129,7 +129,7 @@ func (d *PostgresRuleRepository) GetByProjectID(projectID string) ([]*domain.Rul
 	query := `SELECT id, project_id, rule_id, name, description, type, severity, pattern, message, is_active 
 			  FROM rules WHERE project_id = $1 AND is_active = true ORDER BY severity DESC, name ASC`
 	
-	rows, err := d.db.Query(query, projectID)
+	rows, err := d.DB.Query(query, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (d *PostgresRuleRepository) GetByProjectID(projectID string) ([]*domain.Rul
 
 func (d *PostgresRuleRepository) Delete(projectID, ruleID string) error {
 	query := `DELETE FROM rules WHERE project_id = $1 AND rule_id = $2`
-	_, err := d.db.Exec(query, projectID, ruleID)
+	_, err := d.DB.Exec(query, projectID, ruleID)
 	return err
 }
 
@@ -160,7 +160,7 @@ func (d *PostgresRuleRepository) Delete(projectID, ruleID string) error {
 func (d *PostgresGlobalRuleRepository) Create(rule *domain.GlobalRule) error {
 	query := `INSERT INTO global_rules (language, rule_id, name, description, type, severity, pattern, message, is_active) 
 			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-	_, err := d.db.Exec(query, rule.Language, rule.RuleID, rule.Name, rule.Description, rule.Type, rule.Severity, rule.Pattern, rule.Message, rule.IsActive)
+	_, err := d.DB.Exec(query, rule.Language, rule.RuleID, rule.Name, rule.Description, rule.Type, rule.Severity, rule.Pattern, rule.Message, rule.IsActive)
 	return err
 }
 
@@ -168,7 +168,7 @@ func (d *PostgresGlobalRuleRepository) GetByLanguage(language string) ([]*domain
 	query := `SELECT id, language, rule_id, name, description, type, severity, pattern, message, is_active 
 			  FROM global_rules WHERE language = $1 AND is_active = true ORDER BY severity DESC, name ASC`
 	
-	rows, err := d.db.Query(query, language)
+	rows, err := d.DB.Query(query, language)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (d *PostgresGlobalRuleRepository) GetByLanguage(language string) ([]*domain
 func (d *PostgresGlobalRuleRepository) GetAllLanguages() ([]string, error) {
 	query := `SELECT DISTINCT language FROM global_rules WHERE is_active = true ORDER BY language`
 	
-	rows, err := d.db.Query(query)
+	rows, err := d.DB.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +213,6 @@ func (d *PostgresGlobalRuleRepository) GetAllLanguages() ([]string, error) {
 
 func (d *PostgresGlobalRuleRepository) Delete(language, ruleID string) error {
 	query := `DELETE FROM global_rules WHERE language = $1 AND rule_id = $2`
-	_, err := d.db.Exec(query, language, ruleID)
+	_, err := d.DB.Exec(query, language, ruleID)
 	return err
 }

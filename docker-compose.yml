@@ -39,15 +39,14 @@ services:
       - ./rules.json:/root/rules.json:ro
     restart: unless-stopped
 
-  # Web UI for rule management (optional)
+  # React Frontend for rule management
   rule-manager-ui:
-    image: nginx:alpine
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: rule-manager-ui
     ports:
       - "13000:80"
-    volumes:
-      - ./web:/usr/share/nginx/html
-      - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - rule-mcp-server
     restart: unless-stopped
