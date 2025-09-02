@@ -1,4 +1,4 @@
-module rulemcpserver
+module github.com/opm008077/RuleMCPServer
 
 go 1.25.0
 
