@@ -1,0 +1,56 @@
+# Docker Compose version is no longer required
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rule-mcp-postgres
+    environment:
+      POSTGRES_DB: rule_mcp_db
+      POSTGRES_USER: rule_mcp_user
+      POSTGRES_PASSWORD: rule_mcp_password
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rule_mcp_user -d rule_mcp_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rule-mcp-server:
+    build: .
+    container_name: rule-mcp-server
+    ports:
+      - "18080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=rule_mcp_db
+      - DB_USER=rule_mcp_user
+      - DB_PASSWORD=rule_mcp_password
+      - PORT=8080
+      - ENVIRONMENT=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./rules.json:/root/rules.json:ro
+    restart: unless-stopped
+
+  # Web UI for rule management (optional)
+  rule-manager-ui:
+    image: nginx:alpine
+    container_name: rule-manager-ui
+    ports:
+      - "13000:80"
+    volumes:
+      - ./web:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - rule-mcp-server
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rule MCP Server - ルール管理</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .project-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+        .rules-list {
+            margin-top: 15px;
+        }
+        .rule-item {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            border-left: 4px solid #007bff;
+        }
+        .rule-item.error {
+            border-left-color: #dc3545;
+        }
+        .rule-item.warning {
+            border-left-color: #ffc107;
+        }
+        .rule-item.info {
+            border-left-color: #17a2b8;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rule MCP Server - ルール管理</h1>
+        
+        <div class="section">
+            <h2>プロジェクト作成</h2>
+            <form id="projectForm">
+                <div class="form-group">
+                    <label for="projectId">プロジェクトID:</label>
+                    <input type="text" id="projectId" name="projectId" required>
+                </div>
+                <div class="form-group">
+                    <label for="projectName">プロジェクト名:</label>
+                    <input type="text" id="projectName" name="projectName" required>
+                </div>
+                <div class="form-group">
+                    <label for="projectDescription">説明:</label>
+                    <textarea id="projectDescription" name="projectDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="projectLanguage">言語:</label>
+                    <select id="projectLanguage" name="projectLanguage">
+                        <option value="general">General</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="go">Go</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="applyGlobalRules" name="applyGlobalRules" checked>
+                        グローバルルールを適用する
+                    </label>
+                </div>
+                <button type="submit">プロジェクト作成</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>グローバルルール作成</h2>
+            <form id="globalRuleForm">
+                <div class="form-group">
+                    <label for="globalRuleLanguage">言語:</label>
+                    <select id="globalRuleLanguage" name="globalRuleLanguage" required>
+                        <option value="general">General</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="go">Go</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="globalRuleId">ルールID:</label>
+                    <input type="text" id="globalRuleId" name="globalRuleId" required>
+                </div>
+                <div class="form-group">
+                    <label for="globalRuleName">ルール名:</label>
+                    <input type="text" id="globalRuleName" name="globalRuleName" required>
+                </div>
+                <div class="form-group">
+                    <label for="globalRuleDescription">説明:</label>
+                    <textarea id="globalRuleDescription" name="globalRuleDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="globalRuleType">タイプ:</label>
+                    <select id="globalRuleType" name="globalRuleType" required>
+                        <option value="security">セキュリティ</option>
+                        <option value="style">スタイル</option>
+                        <option value="reliability">信頼性</option>
+                        <option value="performance">パフォーマンス</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="globalRuleSeverity">重要度:</label>
+                    <select id="globalRuleSeverity" name="globalRuleSeverity" required>
+                        <option value="error">エラー</option>
+                        <option value="warning">警告</option>
+                        <option value="info">情報</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="globalRulePattern">パターン:</label>
+                    <input type="text" id="globalRulePattern" name="globalRulePattern" required>
+                </div>
+                <div class="form-group">
+                    <label for="globalRuleMessage">メッセージ:</label>
+                    <textarea id="globalRuleMessage" name="globalRuleMessage" rows="2" required></textarea>
+                </div>
+                <button type="submit">グローバルルール作成</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>ルール作成</h2>
+            <form id="ruleForm">
+                <div class="form-group">
+                    <label for="ruleProjectId">プロジェクトID:</label>
+                    <input type="text" id="ruleProjectId" name="ruleProjectId" required>
+                </div>
+                <div class="form-group">
+                    <label for="ruleId">ルールID:</label>
+                    <input type="text" id="ruleId" name="ruleId" required>
+                </div>
+                <div class="form-group">
+                    <label for="ruleName">ルール名:</label>
+                    <input type="text" id="ruleName" name="ruleName" required>
+                </div>
+                <div class="form-group">
+                    <label for="ruleDescription">説明:</label>
+                    <textarea id="ruleDescription" name="ruleDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="ruleType">タイプ:</label>
+                    <select id="ruleType" name="ruleType" required>
+                        <option value="security">セキュリティ</option>
+                        <option value="style">スタイル</option>
+                        <option value="reliability">信頼性</option>
+                        <option value="performance">パフォーマンス</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ruleSeverity">重要度:</label>
+                    <select id="ruleSeverity" name="ruleSeverity" required>
+                        <option value="error">エラー</option>
+                        <option value="warning">警告</option>
+                        <option value="info">情報</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rulePattern">パターン:</label>
+                    <input type="text" id="rulePattern" name="rulePattern" required>
+                </div>
+                <div class="form-group">
+                    <label for="ruleMessage">メッセージ:</label>
+                    <textarea id="ruleMessage" name="ruleMessage" rows="2" required></textarea>
+                </div>
+                <button type="submit">ルール作成</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>プロジェクト一覧</h2>
+            <button onclick="loadProjects()">更新</button>
+            <div id="projectsContainer" class="projects-grid"></div>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:18080/api/v1';
+
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // プロジェクト作成
+        document.getElementById('projectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch(`${API_BASE}/projects`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        project_id: formData.get('projectId'),
+                        name: formData.get('projectName'),
+                        description: formData.get('projectDescription'),
+                        language: formData.get('projectLanguage'),
+                        apply_global_rules: formData.get('applyGlobalRules') === 'on'
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('プロジェクトが作成されました');
+                    e.target.reset();
+                    loadProjects();
+                } else {
+                    const error = await response.json();
+                    showStatus(`エラー: ${error.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`エラー: ${error.message}`, 'error');
+            }
+        });
+
+        // グローバルルール作成
+        document.getElementById('globalRuleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch(`${API_BASE}/global-rules`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        language: formData.get('globalRuleLanguage'),
+                        rule_id: formData.get('globalRuleId'),
+                        name: formData.get('globalRuleName'),
+                        description: formData.get('globalRuleDescription'),
+                        type: formData.get('globalRuleType'),
+                        severity: formData.get('globalRuleSeverity'),
+                        pattern: formData.get('globalRulePattern'),
+                        message: formData.get('globalRuleMessage')
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('グローバルルールが作成されました');
+                    e.target.reset();
+                } else {
+                    const error = await response.json();
+                    showStatus(`エラー: ${error.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`エラー: ${error.message}`, 'error');
+            }
+        });
+
+        // ルール作成
+        document.getElementById('ruleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch(`${API_BASE}/rules`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        project_id: formData.get('ruleProjectId'),
+                        rule_id: formData.get('ruleId'),
+                        name: formData.get('ruleName'),
+                        description: formData.get('ruleDescription'),
+                        type: formData.get('ruleType'),
+                        severity: formData.get('ruleSeverity'),
+                        pattern: formData.get('rulePattern'),
+                        message: formData.get('ruleMessage')
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('ルールが作成されました');
+                    e.target.reset();
+                    loadProjects();
+                } else {
+                    const error = await response.json();
+                    showStatus(`エラー: ${error.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`エラー: ${error.message}`, 'error');
+            }
+        });
+
+        // プロジェクト一覧読み込み
+        async function loadProjects() {
+            try {
+                const response = await fetch(`${API_BASE}/projects`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayProjects(data.projects);
+                } else {
+                    showStatus('プロジェクトの読み込みに失敗しました', 'error');
+                }
+            } catch (error) {
+                showStatus(`エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // プロジェクト表示
+        function displayProjects(projects) {
+            const container = document.getElementById('projectsContainer');
+            container.innerHTML = '';
+
+            projects.forEach(project => {
+                const projectCard = document.createElement('div');
+                projectCard.className = 'project-card';
+                projectCard.innerHTML = `
+                    <h3>${project.name}</h3>
+                    <p><strong>ID:</strong> ${project.project_id}</p>
+                    <p><strong>説明:</strong> ${project.description || 'なし'}</p>
+                    <p><strong>言語:</strong> ${project.language || '未設定'}</p>
+                    <p><strong>グローバルルール適用:</strong> ${project.apply_global_rules ? '有効' : '無効'}</p>
+                    <p><strong>ルール数:</strong> ${project.rule_count}</p>
+                    <p><strong>作成日:</strong> ${new Date(project.created_at).toLocaleDateString()}</p>
+                `;
+                container.appendChild(projectCard);
+            });
+        }
+
+        // 初期読み込み
+        loadProjects();
+    </script>
+</body>
+</html>

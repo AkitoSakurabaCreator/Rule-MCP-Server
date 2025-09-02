@@ -1,0 +1,80 @@
+{
+  "default": {
+    "project_id": "default",
+    "rules": [
+      {
+        "id": "no-hardcoded-secrets",
+        "name": "No Hardcoded Secrets",
+        "description": "API keys, passwords, and other secrets should not be hardcoded in source code",
+        "type": "security",
+        "severity": "error",
+        "pattern": "api_key",
+        "message": "Hardcoded API key detected. Use environment variables instead."
+      },
+      {
+        "id": "no-sql-injection",
+        "name": "No SQL Injection",
+        "description": "Raw SQL queries should not be constructed by string concatenation",
+        "type": "security",
+        "severity": "error",
+        "pattern": "SELECT * FROM",
+        "message": "Raw SQL query detected. Use parameterized queries or ORM."
+      },
+      {
+        "id": "naming-convention",
+        "name": "Naming Convention",
+        "description": "Functions and variables should use camelCase",
+        "type": "style",
+        "severity": "warning",
+        "pattern": "function_name",
+        "message": "Function name should use camelCase (e.g., functionName)."
+      }
+    ]
+  },
+  "web-app": {
+    "project_id": "web-app",
+    "rules": [
+      {
+        "id": "no-console-log",
+        "name": "No Console Log",
+        "description": "Console.log statements should not be in production code",
+        "type": "style",
+        "severity": "warning",
+        "pattern": "console.log",
+        "message": "Console.log detected. Use proper logging framework in production."
+      },
+      {
+        "id": "no-inline-styles",
+        "name": "No Inline Styles",
+        "description": "CSS styles should be in separate stylesheets, not inline",
+        "type": "style",
+        "severity": "warning",
+        "pattern": "style=\"",
+        "message": "Inline styles detected. Move to CSS file."
+      }
+    ]
+  },
+  "api-service": {
+    "project_id": "api-service",
+    "rules": [
+      {
+        "id": "input-validation",
+        "name": "Input Validation",
+        "description": "All API inputs must be validated",
+        "type": "security",
+        "severity": "error",
+        "pattern": "req.body",
+        "message": "Direct access to req.body without validation detected."
+      },
+      {
+        "id": "error-handling",
+        "name": "Error Handling",
+        "description": "All async operations must have proper error handling",
+        "type": "reliability",
+        "severity": "warning",
+        "pattern": "catch (",
+        "message": "Async operation without proper error handling detected."
+      }
+    ]
+  }
+}
