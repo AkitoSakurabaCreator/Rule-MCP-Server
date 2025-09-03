@@ -8,6 +8,8 @@ type Project struct {
 	Description      string    `json:"description"`
 	Language         string    `json:"language"`
 	ApplyGlobalRules bool      `json:"apply_global_rules"`
+	AccessLevel      string    `json:"access_level"`
+	CreatedBy        string    `json:"created_by"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
