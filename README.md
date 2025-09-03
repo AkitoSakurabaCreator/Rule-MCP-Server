@@ -41,6 +41,17 @@ AIエージェント（Cursor、Cline）が共通のルールを取得・適用�
 - Docker と Docker Compose がインストールされていること
 - PostgreSQL 15以上（Docker使用時は自動でインストール）
 
+### 初期管理アカウント
+
+システム初回起動時に以下の初期管理アカウントが自動的に作成されます：
+
+- **ユーザー名**: `admin`
+- **パスワード**: `admin123`
+- **メール**: `admin@rulemcp.com`
+- **権限**: 管理者（admin）
+
+**重要**: 初回ログイン後は必ずパスワードを変更してください。
+
 ### インストール
 
 ```bash
@@ -58,29 +69,52 @@ cd ..
 
 ### 起動
 
-#### バックエンド
+#### 開発環境
 
 ```bash
-# 開発環境（安全ポート18081）
+# バックエンド（安全ポート18081）
 PORT=18081 go run ./cmd/server
 
-# 本番環境（安全ポート18080）
-ENVIRONMENT=production PORT=18080 go run ./cmd/server
-
-# Makefileを使用
-make run        # 開発環境（ポート18081）
-make run-prod   # 本番環境（ポート18080）
-```
-
-#### フロントエンド
-
-```bash
+# フロントエンド
 cd frontend
 npm start
 
-# または Makefileを使用
+# Makefileを使用
+make run        # 開発環境（ポート18081）
 make run-frontend
 ```
+
+#### 本番環境（Docker）
+
+```bash
+# 本番環境用の環境変数ファイルを作成
+cp env.prod.example .env.prod
+# .env.prodファイルの値を本番環境に合わせて編集
+
+# 本番環境をデプロイ
+make -f Makefile.prod deploy
+
+# 本番環境のステータス確認
+make -f Makefile.prod status
+
+# 本番環境のログ確認
+make -f Makefile.prod logs
+
+# 本番環境を停止
+make -f Makefile.prod down
+
+# 本番環境をクリーンアップ
+make -f Makefile.prod clean
+```
+
+#### 本番環境の特徴
+
+- **セキュリティ強化**: 非rootユーザーでの実行、環境変数による設定
+- **パフォーマンス最適化**: マルチステージビルド、軽量なAlpine Linux
+- **ヘルスチェック**: 各サービスの健全性監視
+- **ログ管理**: 構造化されたログ出力とローテーション
+- **バックアップ**: データベースの自動バックアップ機能
+- **スケーラビリティ**: Docker SwarmやKubernetes対応の準備
 
 ## アーキテクチャ
 
