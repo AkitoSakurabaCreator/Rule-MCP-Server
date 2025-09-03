@@ -1,0 +1,139 @@
+# Authentication and Authorization Configuration
+auth:
+  # API Key settings
+  api_keys:
+    # Key expiration (in days, 0 = never expires)
+    default_expiration_days: 365
+    
+    # Key length for generated keys
+    key_length: 32
+    
+    # Hash algorithm for storing keys
+    hash_algorithm: "bcrypt"
+    
+    # Rate limiting for API key usage
+    rate_limit:
+      requests_per_minute: 100
+      burst_limit: 20
+
+  # Access levels and permissions
+  access_levels:
+    public:
+      description: "Public access - no authentication required"
+      permissions:
+        - "read:public_rules"
+        - "read:public_projects"
+        - "validate:public_code"
+      mcp_access: true
+      rate_limit_multiplier: 0.5  # Reduced rate limit for public access
+    
+    user:
+      description: "Authenticated user access"
+      permissions:
+        - "read:public_rules"
+        - "read:user_rules"
+        - "read:user_projects"
+        - "create:user_rules"
+        - "update:own_rules"
+        - "delete:own_rules"
+        - "validate:user_code"
+      mcp_access: true
+      rate_limit_multiplier: 1.0
+    
+    admin:
+      description: "Administrator access - full permissions"
+      permissions:
+        - "read:*"
+        - "create:*"
+        - "update:*"
+        - "delete:*"
+        - "manage:users"
+        - "manage:api_keys"
+        - "manage:global_rules"
+        - "validate:*"
+      mcp_access: true
+      rate_limit_multiplier: 2.0
+
+  # MCP Protocol access control
+  mcp:
+    # Default access level for MCP requests without API key
+    default_access_level: "public"
+    
+    # Methods that require authentication
+    protected_methods:
+      - "createRule"
+      - "updateRule"
+      - "deleteRule"
+      - "createProject"
+      - "updateProject"
+      - "deleteProject"
+    
+    # Methods that are always public
+    public_methods:
+      - "getRules"
+      - "getProjectInfo"
+      - "validateCode"
+      - "getGlobalRules"
+    
+    # Rate limiting for MCP requests
+    rate_limit:
+      requests_per_minute: 200
+      burst_limit: 50
+
+  # Team collaboration settings
+  teams:
+    # Maximum team members per project
+    max_members_per_project: 50
+    
+    # Default project permissions for new members
+    default_member_permissions:
+      read: true
+      write: true
+      delete: false
+      admin: false
+    
+    # Project visibility levels
+    visibility_levels:
+      - "public"      # Visible to everyone
+      - "team"        # Visible to team members only
+      - "private"     # Visible to project owner only
+
+  # Security settings
+  security:
+    # Password requirements
+    password:
+      min_length: 8
+      require_uppercase: true
+      require_lowercase: true
+      require_numbers: true
+      require_special_chars: true
+    
+    # Session management
+    session:
+      timeout_minutes: 480  # 8 hours
+      max_concurrent_sessions: 5
+    
+    # API key security
+    api_key:
+      # Require HTTPS for API key usage
+      require_https: true
+      
+      # Log all API key usage
+      log_usage: true
+      
+      # Auto-rotate expired keys
+      auto_rotate: false
+
+  # Audit logging
+  audit:
+    # Log all authentication attempts
+    log_auth_attempts: true
+    
+    # Log all permission changes
+    log_permission_changes: true
+    
+    # Log all rule modifications
+    log_rule_modifications: true
+    
+    # Retention period for audit logs (days)
+    retention_days: 365
