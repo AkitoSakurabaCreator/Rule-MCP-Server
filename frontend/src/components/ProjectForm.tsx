@@ -12,14 +12,14 @@ import {
   Alert,
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Project } from '../types';
 import { api } from '../services/api';
-
-const languages = ['general', 'javascript', 'go', 'python', 'java', 'csharp', 'cpp', 'rust'];
 
 const ProjectForm: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -52,7 +52,7 @@ const ProjectForm: React.FC = () => {
         apply_global_rules: project.apply_global_rules,
       });
     } catch (error) {
-      setError('Failed to load project');
+      setError(t('common.error'));
       console.error('Failed to load project:', error);
     }
   };
@@ -66,17 +66,16 @@ const ProjectForm: React.FC = () => {
     try {
       if (isEditMode) {
         await api.put(`/projects/${projectId}`, formData);
-        setSuccess('Project updated successfully!');
+        setSuccess(t('projects.editSuccess'));
       } else {
         await api.post('/projects', formData);
-        setSuccess('Project created successfully!');
+        setSuccess(t('projects.createSuccess'));
       }
-
       setTimeout(() => {
         navigate('/');
       }, 1500);
     } catch (error: any) {
-      setError(error.response?.data?.error || 'An error occurred');
+      setError(error.response?.data?.error || t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -93,7 +92,7 @@ const ProjectForm: React.FC = () => {
     <Card>
       <CardContent>
         <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
-          {isEditMode ? 'Edit Project' : 'New Project'}
+          {isEditMode ? t('projects.editProject') : t('projects.newProject')}
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -101,42 +100,42 @@ const ProjectForm: React.FC = () => {
 
         <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
-            label="Project ID"
+            label={t('projects.projectId')}
             value={formData.project_id}
             onChange={(e) => handleChange('project_id', e.target.value)}
             required
             disabled={isEditMode}
-            helperText="Unique identifier for the project"
+            helperText={t('projects.projectIdHelp')}
           />
 
           <TextField
-            label="Name"
+            label={t('projects.name')}
             value={formData.name}
             onChange={(e) => handleChange('name', e.target.value)}
             required
-            helperText="Display name for the project"
+            helperText={t('projects.nameHelp')}
           />
 
           <TextField
-            label="Description"
+            label={t('projects.description')}
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             multiline
             rows={3}
-            helperText="Optional description of the project"
+            helperText={t('projects.descriptionHelp')}
           />
 
           <TextField
             select
-            label="Language"
+            label={t('projects.language')}
             value={formData.language}
             onChange={(e) => handleChange('language', e.target.value)}
             required
-            helperText="Programming language for this project"
+            helperText={t('projects.languageHelp')}
           >
-            {languages.map((lang) => (
-              <MenuItem key={lang} value={lang}>
-                {lang.charAt(0).toUpperCase() + lang.slice(1)}
+            {Object.entries(t('languages', { returnObjects: true })).map(([key, value]) => (
+              <MenuItem key={key} value={key}>
+                {value as string}
               </MenuItem>
             ))}
           </TextField>
@@ -148,24 +147,23 @@ const ProjectForm: React.FC = () => {
                 onChange={(e) => handleChange('apply_global_rules', e.target.checked)}
               />
             }
-            label="Apply global rules for this language"
+            label={t('projects.applyGlobalRules')}
           />
 
-          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading}
-              sx={{ minWidth: 120 }}
-            >
-              {loading ? 'Saving...' : (isEditMode ? 'Update' : 'Create')}
-            </Button>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               onClick={() => navigate('/')}
               disabled={loading}
             >
-              Cancel
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading}
+            >
+              {loading ? t('common.loading') : (isEditMode ? t('common.save') : t('common.add'))}
             </Button>
           </Box>
         </Box>
