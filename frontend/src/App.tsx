@@ -2,11 +2,12 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Container } from '@mui/material';
+import { Container, Box, CircularProgress } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
 import './i18n';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Header from './components/Header';
 import ProjectList from './components/ProjectList';
 import ProjectForm from './components/ProjectForm';
@@ -14,10 +15,14 @@ import RuleList from './components/RuleList';
 import RuleEdit from './components/RuleEdit';
 import GlobalRuleForm from './components/GlobalRuleForm';
 import CodeValidator from './components/CodeValidator';
+import LoginForm from './components/auth/LoginForm';
+import RegisterForm from './components/auth/RegisterForm';
+import AdminDashboard from './components/dashboard/AdminDashboard';
 
 const AppContent: React.FC = () => {
   const { i18n } = useTranslation();
   const { themeMode } = useTheme();
+  const { isAuthenticated, user, isLoading } = useAuth();
   
   // RTL言語のサポート
   const isRTL = ['ar', 'he', 'fa'].includes(i18n.language);
@@ -65,23 +70,111 @@ const AppContent: React.FC = () => {
     },
   });
 
+  // ローディング中は何も表示しない
+  if (isLoading) {
+    return (
+      <MuiThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <CircularProgress />
+        </Box>
+      </MuiThemeProvider>
+    );
+  }
+
   return (
     <MuiThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Header />
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-          <Routes>
-            <Route path="/" element={<ProjectList />} />
-            <Route path="/projects/new" element={<ProjectForm />} />
-            <Route path="/projects/:projectId/edit" element={<ProjectForm />} />
-            <Route path="/projects/:projectId/rules" element={<RuleList />} />
-            <Route path="/projects/:projectId/rules/new" element={<RuleEdit />} />
-            <Route path="/projects/:projectId/rules/:ruleId/edit" element={<RuleEdit />} />
-            <Route path="/global-rules" element={<GlobalRuleForm />} />
-            <Route path="/validate" element={<CodeValidator />} />
-          </Routes>
-        </Container>
+        <Routes>
+          {/* 認証ルート - Headerなし */}
+          <Route path="/auth/login" element={<LoginForm />} />
+          <Route path="/auth/register" element={<RegisterForm />} />
+          
+          {/* 管理者ルート */}
+          {user?.role === 'admin' && (
+            <Route path="/admin/dashboard" element={
+              <>
+                <Header />
+                <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                  <AdminDashboard />
+                </Container>
+              </>
+            } />
+          )}
+          
+          {/* 保護されたルート */}
+          {isAuthenticated ? (
+            <>
+              <Route path="/" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <ProjectList />
+                  </Container>
+                </>
+              } />
+              <Route path="/projects/new" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <ProjectForm />
+                  </Container>
+                </>
+              } />
+              <Route path="/projects/:projectId/edit" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <ProjectForm />
+                  </Container>
+                </>
+              } />
+              <Route path="/projects/:projectId/rules" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <RuleList />
+                  </Container>
+                </>
+              } />
+              <Route path="/projects/:projectId/rules/new" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <RuleEdit />
+                  </Container>
+                </>
+              } />
+              <Route path="/projects/:projectId/rules/:ruleId/edit" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <RuleEdit />
+                  </Container>
+                </>
+              } />
+              <Route path="/global-rules" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <GlobalRuleForm />
+                  </Container>
+                </>
+              } />
+              <Route path="/validate" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <CodeValidator />
+                  </Container>
+                </>
+              } />
+            </>
+          ) : (
+            <Route path="*" element={<LoginForm />} />
+          )}
+        </Routes>
       </Router>
     </MuiThemeProvider>
   );
@@ -90,7 +183,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ThemeProvider>
   );
 };
