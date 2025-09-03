@@ -1,10 +1,24 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Add as AddIcon, Code as CodeIcon, Language as LanguageIcon } from '@mui/icons-material';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Language as LanguageIcon,
+  Code as CodeIcon,
+} from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
+import ThemeToggle from './ThemeToggle';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <AppBar position="static">
@@ -12,28 +26,34 @@ const Header: React.FC = () => {
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           Rule MCP Server
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <Button
             color="inherit"
             startIcon={<AddIcon />}
             onClick={() => navigate('/projects/new')}
           >
-            New Project
+            {t('navigation.newProject')}
           </Button>
+
           <Button
             color="inherit"
             startIcon={<LanguageIcon />}
-            onClick={() => navigate('/global-rules/new')}
+            onClick={() => navigate('/global-rules')}
           >
-            Global Rules
+            {t('navigation.globalRules')}
           </Button>
+
           <Button
             color="inherit"
             startIcon={<CodeIcon />}
             onClick={() => navigate('/validate')}
           >
-            Validate Code
+            {t('navigation.validateCode')}
           </Button>
+
+          <ThemeToggle />
+          <LanguageSwitcher />
         </Box>
       </Toolbar>
     </AppBar>
