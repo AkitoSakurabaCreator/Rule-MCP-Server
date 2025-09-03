@@ -10,7 +10,8 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import ProjectList from './components/ProjectList';
 import ProjectForm from './components/ProjectForm';
-import RuleForm from './components/RuleForm';
+import RuleList from './components/RuleList';
+import RuleEdit from './components/RuleEdit';
 import GlobalRuleForm from './components/GlobalRuleForm';
 import CodeValidator from './components/CodeValidator';
 
@@ -74,7 +75,9 @@ const AppContent: React.FC = () => {
             <Route path="/" element={<ProjectList />} />
             <Route path="/projects/new" element={<ProjectForm />} />
             <Route path="/projects/:projectId/edit" element={<ProjectForm />} />
-            <Route path="/projects/:projectId/rules/new" element={<RuleForm />} />
+            <Route path="/projects/:projectId/rules" element={<RuleList />} />
+            <Route path="/projects/:projectId/rules/new" element={<RuleEdit />} />
+            <Route path="/projects/:projectId/rules/:ruleId/edit" element={<RuleEdit />} />
             <Route path="/global-rules" element={<GlobalRuleForm />} />
             <Route path="/validate" element={<CodeValidator />} />
           </Routes>
