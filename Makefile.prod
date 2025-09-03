@@ -1,0 +1,52 @@
+# 本番環境用 Makefile
+
+.PHONY: help build up down logs clean restart backup restore
+
+help: ## 利用可能なコマンドを表示
+	@echo "利用可能なコマンド:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+build: ## 本番環境用のDockerイメージをビルド
+	docker-compose -f docker-compose.prod.yml build
+
+up: ## 本番環境を起動
+	docker-compose -f docker-compose.prod.yml up -d
+
+down: ## 本番環境を停止
+	docker-compose -f docker-compose.prod.yml down
+
+logs: ## 本番環境のログを表示
+	docker-compose -f docker-compose.prod.yml logs -f
+
+clean: ## 本番環境のコンテナとイメージを削除
+	docker-compose -f docker-compose.prod.yml down --rmi all --volumes --remove-orphans
+
+restart: ## 本番環境を再起動
+	docker-compose -f docker-compose.prod.yml restart
+
+backup: ## データベースのバックアップを作成
+	@echo "データベースのバックアップを作成中..."
+	docker exec rule-mcp-postgres-prod pg_dump -U rule_mcp_user_prod rule_mcp_db_prod > backup_$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "バックアップ完了: backup_$(shell date +%Y%m%d_%H%M%S).sql"
+
+restore: ## データベースのバックアップを復元（引数: BACKUP_FILE=backup_file.sql）
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "使用方法: make restore BACKUP_FILE=backup_file.sql"; \
+		exit 1; \
+	fi
+	@echo "データベースのバックアップを復元中: $(BACKUP_FILE)"
+	docker exec -i rule-mcp-postgres-prod psql -U rule_mcp_user_prod rule_mcp_db_prod < $(BACKUP_FILE)
+	@echo "復元完了"
+
+status: ## 本番環境のステータスを表示
+	docker-compose -f docker-compose.prod.yml ps
+
+health: ## ヘルスチェックを実行
+	@echo "ヘルスチェック実行中..."
+	@curl -f http://localhost:18080/api/v1/health && echo "✅ バックエンド: 正常" || echo "❌ バックエンド: エラー"
+	@curl -f http://localhost:13000 && echo "✅ フロントエンド: 正常" || echo "❌ フロントエンド: エラー"
+
+deploy: build up ## 本番環境をデプロイ（ビルド + 起動）
+	@echo "デプロイ完了"
+	@echo "バックエンド: http://localhost:18080"
+	@echo "フロントエンド: http://localhost:13000"
