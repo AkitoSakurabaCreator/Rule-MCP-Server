@@ -15,10 +15,12 @@ import {
   Paper,
 } from '@mui/material';
 import { CheckCircle as CheckIcon, Error as ErrorIcon, Warning as WarningIcon } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 import { Project, ValidationResult } from '../types';
 import { api } from '../services/api';
 
 const CodeValidator: React.FC = () => {
+  const { t } = useTranslation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [code, setCode] = useState<string>('');
@@ -38,14 +40,14 @@ const CodeValidator: React.FC = () => {
         setSelectedProject(response.data.projects[0].project_id);
       }
     } catch (error) {
-      setError('Failed to load projects');
+      setError(t('codeValidator.loadProjectsError'));
       console.error('Failed to load projects:', error);
     }
   };
 
   const handleValidate = async () => {
     if (!selectedProject || !code.trim()) {
-      setError('Please select a project and enter code to validate');
+      setError(t('codeValidator.selectProjectAndCode'));
       return;
     }
 
@@ -60,19 +62,39 @@ const CodeValidator: React.FC = () => {
       });
       setValidationResult(response.data);
     } catch (error: any) {
-      setError(error.response?.data?.error || 'An error occurred during validation');
+      setError(error.response?.data?.error || t('codeValidator.validationError'));
     } finally {
       setLoading(false);
     }
   };
 
+  const getSeverityIcon = (severity: string) => {
+    switch (severity.toLowerCase()) {
+      case 'error':
+        return <ErrorIcon color="error" />;
+      case 'warning':
+        return <WarningIcon color="warning" />;
+      default:
+        return <CheckIcon color="success" />;
+    }
+  };
 
+  const getSeverityColor = (severity: string) => {
+    switch (severity.toLowerCase()) {
+      case 'error':
+        return 'error.main';
+      case 'warning':
+        return 'warning.main';
+      default:
+        return 'success.main';
+    }
+  };
 
   return (
     <Card>
       <CardContent>
         <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
-          Code Validator
+          {t('codeValidator.title')}
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -80,11 +102,11 @@ const CodeValidator: React.FC = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
             select
-            label="Project"
+            label={t('codeValidator.selectProject')}
             value={selectedProject}
             onChange={(e) => setSelectedProject(e.target.value)}
             required
-            helperText="Select a project to validate code against its rules"
+            helperText={t('codeValidator.selectProjectHelp')}
           >
             {projects.map((project) => (
               <MenuItem key={project.project_id} value={project.project_id}>
@@ -94,14 +116,14 @@ const CodeValidator: React.FC = () => {
           </TextField>
 
           <TextField
-            label="Code to Validate"
+            label={t('codeValidator.codeToValidate')}
             value={code}
             onChange={(e) => setCode(e.target.value)}
             multiline
             rows={10}
             required
-            placeholder="Enter your code here..."
-            helperText="Paste the code you want to validate"
+            placeholder={t('codeValidator.enterCode')}
+            helperText={t('codeValidator.pasteCode')}
           />
 
           <Button
@@ -110,34 +132,30 @@ const CodeValidator: React.FC = () => {
             disabled={loading || !selectedProject || !code.trim()}
             sx={{ minWidth: 120 }}
           >
-            {loading ? 'Validating...' : 'Validate Code'}
+            {loading ? t('codeValidator.validating') : t('codeValidator.validateCode')}
           </Button>
         </Box>
 
         {validationResult && (
           <Paper sx={{ mt: 3, p: 2 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
-              Validation Results
+              {t('codeValidator.validationResults')}
             </Typography>
+            
+            {validationResult.valid ? (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                {t('codeValidator.codeIsValid')}
+              </Alert>
+            ) : (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {t('codeValidator.codeHasIssues')}
+              </Alert>
+            )}
 
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              {validationResult.valid ? (
-                <CheckIcon color="success" sx={{ mr: 1 }} />
-              ) : (
-                <ErrorIcon color="error" sx={{ mr: 1 }} />
-              )}
-              <Typography
-                variant="h6"
-                color={validationResult.valid ? 'success.main' : 'error.main'}
-              >
-                {validationResult.valid ? 'Code is Valid' : 'Code has Issues'}
-              </Typography>
-            </Box>
-
-            {validationResult.errors.length > 0 && (
+            {validationResult.errors && validationResult.errors.length > 0 && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle1" color="error" sx={{ mb: 1 }}>
-                  Errors ({validationResult.errors.length}):
+                  {t('codeValidator.errors')}:
                 </Typography>
                 <List dense>
                   {validationResult.errors.map((error, index) => (
@@ -152,10 +170,10 @@ const CodeValidator: React.FC = () => {
               </Box>
             )}
 
-            {validationResult.warnings.length > 0 && (
+            {validationResult.warnings && validationResult.warnings.length > 0 && (
               <Box>
                 <Typography variant="subtitle1" color="warning.main" sx={{ mb: 1 }}>
-                  Warnings ({validationResult.warnings.length}):
+                  {t('codeValidator.warnings')}:
                 </Typography>
                 <List dense>
                   {validationResult.warnings.map((warning, index) => (
@@ -168,6 +186,13 @@ const CodeValidator: React.FC = () => {
                   ))}
                 </List>
               </Box>
+            )}
+
+            {validationResult.valid && (!validationResult.errors || validationResult.errors.length === 0) && 
+             (!validationResult.warnings || validationResult.warnings.length === 0) && (
+              <Alert severity="success">
+                {t('codeValidator.noIssues')}
+              </Alert>
             )}
           </Paper>
         )}
