@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS rules (
     severity VARCHAR(20) NOT NULL,
     pattern TEXT NOT NULL,
     message TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE,
