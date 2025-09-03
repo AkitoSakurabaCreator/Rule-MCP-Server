@@ -13,9 +13,9 @@ test-coverage:
 	go test -v -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
-# サーバー起動
+# サーバー起動（開発者向け安全ポート）
 run:
-	go run ./cmd/server
+	PORT=18081 go run ./cmd/server
 
 # カスタムポートでサーバー起動
 run-port:
@@ -24,7 +24,11 @@ run-port:
 
 # 本番環境でサーバー起動
 run-prod:
-	ENVIRONMENT=production LOG_LEVEL=warn go run ./cmd/server
+	ENVIRONMENT=production LOG_LEVEL=warn PORT=18080 go run ./cmd/server
+
+# フロントエンド開発サーバー起動（安全ポート）
+run-frontend:
+	cd frontend && npm start
 
 # クリーンアップ
 clean:
@@ -66,7 +70,8 @@ help:
 	@echo "  build        - Build the application"
 	@echo "  test         - Run tests"
 	@echo "  test-coverage - Run tests with coverage report"
-	@echo "  run          - Run the server"
+	@echo "  run          - Run the server (port 18081)"
+	@echo "  run-frontend - Run frontend dev server (port 13001)"
 	@echo "  clean        - Clean build artifacts"
 	@echo "  deps         - Tidy dependencies"
 	@echo "  fmt          - Format code"
