@@ -18,12 +18,14 @@ AIエージェント（Cursor、Cline）が共通のルールを取得・適用�
 ## 技術スタック
 
 ### バックエンド
+
 - **Go 1.21+** + **Gin Web Framework**
 - **クリーンアーキテクチャ**（Domain, Usecase, Interface, Infrastructure）
 - **PostgreSQL** データベース
 - **MCP（Model Context Protocol）** サポート
 
 ### フロントエンド
+
 - **React 18** + **TypeScript**
 - **Material-UI (MUI)** コンポーネントライブラリ
 - **React Router** によるルーティング
@@ -57,6 +59,7 @@ cd ..
 ### 起動
 
 #### バックエンド
+
 ```bash
 # 開発環境（安全ポート18081）
 PORT=18081 go run ./cmd/server
@@ -70,6 +73,7 @@ make run-prod   # 本番環境（ポート18080）
 ```
 
 #### フロントエンド
+
 ```bash
 cd frontend
 npm start
@@ -240,6 +244,7 @@ GET  /mcp/ws         # WebSocket MCP接続
 ### 多言語対応（i18n）
 
 以下の言語をサポート：
+
 - **英語 (en)**: デフォルト言語
 - **日本語 (ja)**: 完全対応
 - **中国語 (zh-CN)**: 完全対応
@@ -394,6 +399,7 @@ make glb_repo
 ### よくある問題
 
 #### 1. データベース接続エラー
+
 ```bash
 # データベースコンテナの再起動
 docker-compose restart postgres
@@ -404,6 +410,7 @@ docker-compose up -d postgres
 ```
 
 #### 2. ポート競合
+
 ```bash
 # 使用中のポートを確認
 lsof -i :18081
@@ -414,6 +421,7 @@ PORT=18082 go run ./cmd/server
 ```
 
 #### 3. MCPサーバーが応答しない
+
 ```bash
 # サーバーの起動確認
 curl http://localhost:18081/api/v1/health
@@ -425,6 +433,7 @@ curl -X POST http://localhost:18081/mcp/request \
 ```
 
 #### 4. フロントエンドのビルドエラー
+
 ```bash
 # 依存関係の再インストール
 cd frontend
