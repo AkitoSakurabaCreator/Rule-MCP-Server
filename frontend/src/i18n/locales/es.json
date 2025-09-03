@@ -1,0 +1,110 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "error": "Error",
+    "success": "Éxito",
+    "warning": "Advertencia",
+    "info": "Información"
+  },
+  "navigation": {
+    "projects": "Proyectos",
+    "newProject": "Nuevo Proyecto",
+    "globalRules": "Reglas Globales",
+    "validateCode": "Validar Código",
+    "home": "Inicio"
+  },
+  "projects": {
+    "title": "Proyectos",
+    "newProject": "Nuevo Proyecto",
+    "editProject": "Editar Proyecto",
+    "projectId": "ID del Proyecto",
+    "name": "Nombre",
+    "description": "Descripción",
+    "language": "Idioma",
+    "applyGlobalRules": "Aplicar Reglas Globales",
+    "globalRules": "Reglas Globales",
+    "noGlobalRules": "Sin Reglas Globales",
+    "rules": "Reglas",
+    "addRule": "Agregar Regla",
+    "deleteProject": "Eliminar Proyecto",
+    "deleteConfirm": "¿Está seguro de que desea eliminar este proyecto? Esta acción no se puede deshacer.",
+    "noDescription": "Sin descripción",
+    "loadingProjects": "Cargando proyectos..."
+  },
+  "rules": {
+    "title": "Reglas",
+    "newRule": "Nueva Regla",
+    "ruleId": "ID de la Regla",
+    "name": "Nombre",
+    "description": "Descripción",
+    "type": "Tipo",
+    "severity": "Severidad",
+    "pattern": "Patrón",
+    "message": "Mensaje",
+    "isActive": "Activo",
+    "deleteRule": "Eliminar Regla",
+    "deleteConfirm": "¿Está seguro de que desea eliminar esta regla?"
+  },
+  "globalRules": {
+    "title": "Reglas Globales",
+    "newGlobalRule": "Nueva Regla Global",
+    "language": "Idioma",
+    "languages": "Idiomas",
+    "deleteGlobalRule": "Eliminar Regla Global",
+    "deleteConfirm": "¿Está seguro de que desea eliminar esta regla global?"
+  },
+  "codeValidator": {
+    "title": "Validador de Código",
+    "selectProject": "Seleccione un proyecto para validar el código contra sus reglas",
+    "codeToValidate": "Código a Validar",
+    "enterCode": "Ingrese su código aquí...",
+    "pasteCode": "Pegue el código que desea validar",
+    "validateCode": "Validar Código",
+    "validating": "Validando...",
+    "validationResults": "Resultados de Validación",
+    "codeIsValid": "El código es válido",
+    "codeHasIssues": "El código tiene problemas",
+    "errors": "Errores",
+    "warnings": "Advertencias",
+    "noIssues": "No se encontraron problemas"
+  },
+  "languages": {
+    "general": "General",
+    "javascript": "JavaScript",
+    "typescript": "TypeScript",
+    "python": "Python",
+    "go": "Go",
+    "java": "Java",
+    "csharp": "C#",
+    "php": "PHP",
+    "ruby": "Ruby",
+    "rust": "Rust",
+    "swift": "Swift",
+    "kotlin": "Kotlin"
+  },
+  "severity": {
+    "error": "Error",
+    "warning": "Advertencia",
+    "info": "Información"
+  },
+  "types": {
+    "naming": "Convención de Nomenclatura",
+    "formatting": "Formato de Código",
+    "security": "Seguridad",
+    "performance": "Rendimiento",
+    "maintainability": "Mantenibilidad",
+    "accessibility": "Accesibilidad",
+    "testing": "Pruebas",
+    "documentation": "Documentación"
+  }
+}

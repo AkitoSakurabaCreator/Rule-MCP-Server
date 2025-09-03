@@ -1,0 +1,116 @@
+{
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "add": "जोड़ें",
+    "back": "वापस",
+    "next": "अगला",
+    "submit": "सबमिट करें",
+    "close": "बंद करें",
+    "confirm": "पुष्टि करें",
+    "error": "त्रुटि",
+    "success": "सफल",
+    "warning": "चेतावनी",
+    "info": "जानकारी"
+  },
+  "theme": {
+    "switchToLight": "लाइट मोड में बदलें",
+    "switchToDark": "डार्क मोड में बदलें",
+    "light": "लाइट",
+    "dark": "डार्क"
+  },
+  "navigation": {
+    "projects": "प्रोजेक्ट",
+    "newProject": "नया प्रोजेक्ट",
+    "globalRules": "वैश्विक नियम",
+    "validateCode": "कोड सत्यापित करें",
+    "home": "होम"
+  },
+  "projects": {
+    "title": "प्रोजेक्ट",
+    "newProject": "नया प्रोजेक्ट",
+    "editProject": "प्रोजेक्ट संपादित करें",
+    "projectId": "प्रोजेक्ट ID",
+    "name": "नाम",
+    "description": "विवरण",
+    "language": "भाषा",
+    "applyGlobalRules": "वैश्विक नियम लागू करें",
+    "globalRules": "वैश्विक नियम",
+    "noGlobalRules": "कोई वैश्विक नियम नहीं",
+    "rules": "नियम",
+    "addRule": "नियम जोड़ें",
+    "deleteProject": "प्रोजेक्ट हटाएं",
+    "deleteConfirm": "क्या आप वाकई इस प्रोजेक्ट को हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।",
+    "noDescription": "कोई विवरण नहीं",
+    "loadingProjects": "प्रोजेक्ट लोड हो रहे हैं..."
+  },
+  "rules": {
+    "title": "नियम",
+    "newRule": "नया नियम",
+    "ruleId": "नियम ID",
+    "name": "नाम",
+    "description": "विवरण",
+    "type": "प्रकार",
+    "severity": "गंभीरता",
+    "pattern": "पैटर्न",
+    "message": "संदेश",
+    "isActive": "सक्रिय",
+    "deleteRule": "नियम हटाएं",
+    "deleteConfirm": "क्या आप वाकई इस नियम को हटाना चाहते हैं?"
+  },
+  "globalRules": {
+    "title": "वैश्विक नियम",
+    "newGlobalRule": "नया वैश्विक नियम",
+    "language": "भाषा",
+    "languages": "भाषाएं",
+    "deleteGlobalRule": "वैश्विक नियम हटाएं",
+    "deleteConfirm": "क्या आप वाकई इस वैश्विक नियम को हटाना चाहते हैं?"
+  },
+  "codeValidator": {
+    "title": "कोड वैलिडेटर",
+    "selectProject": "कोड को सत्यापित करने के लिए प्रोजेक्ट चुनें",
+    "codeToValidate": "सत्यापित करने के लिए कोड",
+    "enterCode": "यहां कोड दर्ज करें...",
+    "pasteCode": "सत्यापित करने के लिए कोड पेस्ट करें",
+    "validateCode": "कोड सत्यापित करें",
+    "validating": "सत्यापित हो रहा है...",
+    "validationResults": "सत्यापन परिणाम",
+    "codeIsValid": "कोड मान्य है",
+    "codeHasIssues": "कोड में समस्याएं हैं",
+    "errors": "त्रुटियां",
+    "warnings": "चेतावनियां",
+    "noIssues": "कोई समस्या नहीं मिली"
+  },
+  "languages": {
+    "general": "सामान्य",
+    "javascript": "JavaScript",
+    "typescript": "TypeScript",
+    "python": "Python",
+    "go": "Go",
+    "java": "Java",
+    "csharp": "C#",
+    "php": "PHP",
+    "ruby": "Ruby",
+    "rust": "Rust",
+    "swift": "Swift",
+    "kotlin": "Kotlin"
+  },
+  "severity": {
+    "error": "त्रुटि",
+    "warning": "चेतावनी",
+    "info": "जानकारी"
+  },
+  "types": {
+    "naming": "नामकरण सम्मेलन",
+    "formatting": "कोड फॉर्मेटिंग",
+    "security": "सुरक्षा",
+    "performance": "प्रदर्शन",
+    "maintainability": "रखरखाव",
+    "accessibility": "पहुंच",
+    "testing": "परीक्षण",
+    "documentation": "दस्तावेज़ीकरण"
+  }
+}
