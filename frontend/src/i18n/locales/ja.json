@@ -1,0 +1,116 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "add": "追加",
+    "back": "戻る",
+    "next": "次へ",
+    "submit": "送信",
+    "close": "閉じる",
+    "confirm": "確認",
+    "error": "エラー",
+    "success": "成功",
+    "warning": "警告",
+    "info": "情報"
+  },
+  "theme": {
+    "switchToLight": "ライトモードに切り替え",
+    "switchToDark": "ダークモードに切り替え",
+    "light": "ライト",
+    "dark": "ダーク"
+  },
+  "navigation": {
+    "projects": "プロジェクト",
+    "newProject": "新規プロジェクト",
+    "globalRules": "グローバルルール",
+    "validateCode": "コード検証",
+    "home": "ホーム"
+  },
+  "projects": {
+    "title": "プロジェクト",
+    "newProject": "新規プロジェクト",
+    "editProject": "プロジェクト編集",
+    "projectId": "プロジェクトID",
+    "name": "名前",
+    "description": "説明",
+    "language": "言語",
+    "applyGlobalRules": "グローバルルールを適用",
+    "globalRules": "グローバルルール",
+    "noGlobalRules": "グローバルルールなし",
+    "rules": "ルール",
+    "addRule": "ルール追加",
+    "deleteProject": "プロジェクト削除",
+    "deleteConfirm": "このプロジェクトを削除してもよろしいですか？この操作は元に戻せません。",
+    "noDescription": "説明なし",
+    "loadingProjects": "プロジェクトを読み込み中..."
+  },
+  "rules": {
+    "title": "ルール",
+    "newRule": "新規ルール",
+    "ruleId": "ルールID",
+    "name": "名前",
+    "description": "説明",
+    "type": "タイプ",
+    "severity": "重要度",
+    "pattern": "パターン",
+    "message": "メッセージ",
+    "isActive": "有効",
+    "deleteRule": "ルール削除",
+    "deleteConfirm": "このルールを削除してもよろしいですか？"
+  },
+  "globalRules": {
+    "title": "グローバルルール",
+    "newGlobalRule": "新規グローバルルール",
+    "language": "言語",
+    "languages": "言語一覧",
+    "deleteGlobalRule": "グローバルルール削除",
+    "deleteConfirm": "このグローバルルールを削除してもよろしいですか？"
+  },
+  "codeValidator": {
+    "title": "コード検証器",
+    "selectProject": "コードを検証するプロジェクトを選択してください",
+    "codeToValidate": "検証するコード",
+    "enterCode": "ここにコードを入力してください...",
+    "pasteCode": "検証したいコードを貼り付けてください",
+    "validateCode": "コード検証",
+    "validating": "検証中...",
+    "validationResults": "検証結果",
+    "codeIsValid": "コードは有効です",
+    "codeHasIssues": "コードに問題があります",
+    "errors": "エラー",
+    "warnings": "警告",
+    "noIssues": "問題は見つかりませんでした"
+  },
+  "languages": {
+    "general": "一般",
+    "javascript": "JavaScript",
+    "typescript": "TypeScript",
+    "python": "Python",
+    "go": "Go",
+    "java": "Java",
+    "csharp": "C#",
+    "php": "PHP",
+    "ruby": "Ruby",
+    "rust": "Rust",
+    "swift": "Swift",
+    "kotlin": "Kotlin"
+  },
+  "severity": {
+    "error": "エラー",
+    "warning": "警告",
+    "info": "情報"
+  },
+  "types": {
+    "naming": "命名規則",
+    "formatting": "コードフォーマット",
+    "security": "セキュリティ",
+    "performance": "パフォーマンス",
+    "maintainability": "保守性",
+    "accessibility": "アクセシビリティ",
+    "testing": "テスト",
+    "documentation": "ドキュメント"
+  }
+}

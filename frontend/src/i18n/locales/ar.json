@@ -1,0 +1,110 @@
+{
+  "common": {
+    "loading": "جاري التحميل...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "add": "إضافة",
+    "back": "رجوع",
+    "next": "التالي",
+    "submit": "إرسال",
+    "close": "إغلاق",
+    "confirm": "تأكيد",
+    "error": "خطأ",
+    "success": "نجح",
+    "warning": "تحذير",
+    "info": "معلومات"
+  },
+  "navigation": {
+    "projects": "المشاريع",
+    "newProject": "مشروع جديد",
+    "globalRules": "القواعد العامة",
+    "validateCode": "التحقق من الكود",
+    "home": "الرئيسية"
+  },
+  "projects": {
+    "title": "المشاريع",
+    "newProject": "مشروع جديد",
+    "editProject": "تعديل المشروع",
+    "projectId": "معرف المشروع",
+    "name": "الاسم",
+    "description": "الوصف",
+    "language": "اللغة",
+    "applyGlobalRules": "تطبيق القواعد العامة",
+    "globalRules": "القواعد العامة",
+    "noGlobalRules": "لا توجد قواعد عامة",
+    "rules": "القواعد",
+    "addRule": "إضافة قاعدة",
+    "deleteProject": "حذف المشروع",
+    "deleteConfirm": "هل أنت متأكد من أنك تريد حذف هذا المشروع؟ لا يمكن التراجع عن هذا الإجراء.",
+    "noDescription": "لا يوجد وصف",
+    "loadingProjects": "جاري تحميل المشاريع..."
+  },
+  "rules": {
+    "title": "القواعد",
+    "newRule": "قاعدة جديدة",
+    "ruleId": "معرف القاعدة",
+    "name": "الاسم",
+    "description": "الوصف",
+    "type": "النوع",
+    "severity": "الخطورة",
+    "pattern": "النمط",
+    "message": "الرسالة",
+    "isActive": "نشط",
+    "deleteRule": "حذف القاعدة",
+    "deleteConfirm": "هل أنت متأكد من أنك تريد حذف هذه القاعدة؟"
+  },
+  "globalRules": {
+    "title": "القواعد العامة",
+    "newGlobalRule": "قاعدة عامة جديدة",
+    "language": "اللغة",
+    "languages": "اللغات",
+    "deleteGlobalRule": "حذف القاعدة العامة",
+    "deleteConfirm": "هل أنت متأكد من أنك تريد حذف هذه القاعدة العامة؟"
+  },
+  "codeValidator": {
+    "title": "محقق الكود",
+    "selectProject": "اختر مشروعًا للتحقق من الكود ضد قواعده",
+    "codeToValidate": "الكود المراد التحقق منه",
+    "enterCode": "أدخل الكود هنا...",
+    "pasteCode": "الصق الكود الذي تريد التحقق منه",
+    "validateCode": "التحقق من الكود",
+    "validating": "جاري التحقق...",
+    "validationResults": "نتائج التحقق",
+    "codeIsValid": "الكود صحيح",
+    "codeHasIssues": "الكود يحتوي على مشاكل",
+    "errors": "الأخطاء",
+    "warnings": "التحذيرات",
+    "noIssues": "لم يتم العثور على مشاكل"
+  },
+  "languages": {
+    "general": "عام",
+    "javascript": "JavaScript",
+    "typescript": "TypeScript",
+    "python": "Python",
+    "go": "Go",
+    "java": "Java",
+    "csharp": "C#",
+    "php": "PHP",
+    "ruby": "Ruby",
+    "rust": "Rust",
+    "swift": "Swift",
+    "kotlin": "Kotlin"
+  },
+  "severity": {
+    "error": "خطأ",
+    "warning": "تحذير",
+    "info": "معلومات"
+  },
+  "types": {
+    "naming": "اتفاقية التسمية",
+    "formatting": "تنسيق الكود",
+    "security": "الأمان",
+    "performance": "الأداء",
+    "maintainability": "قابلية الصيانة",
+    "accessibility": "إمكانية الوصول",
+    "testing": "الاختبار",
+    "documentation": "التوثيق"
+  }
+}
