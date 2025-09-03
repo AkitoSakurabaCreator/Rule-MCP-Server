@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -8,7 +8,7 @@ import {
   Box,
 } from '@mui/material';
 import {
-  Add as AddIcon,
+  Home as HomeIcon,
   Language as LanguageIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
@@ -18,7 +18,11 @@ import ThemeToggle from './ThemeToggle';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
+
+  // 現在のページがホームページかどうかを判定
+  const isHomePage = location.pathname === '/';
 
   return (
     <AppBar position="static">
@@ -28,13 +32,16 @@ const Header: React.FC = () => {
         </Typography>
 
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Button
-            color="inherit"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/projects/new')}
-          >
-            {t('navigation.newProject')}
-          </Button>
+          {/* ホームページ以外にいる場合のみホームボタンを表示 */}
+          {!isHomePage && (
+            <Button
+              color="inherit"
+              startIcon={<HomeIcon />}
+              onClick={() => navigate('/')}
+            >
+              {t('navigation.home')}
+            </Button>
+          )}
 
           <Button
             color="inherit"
