@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Project } from '../types';
 import { api } from '../services/api';
 
@@ -24,6 +25,7 @@ const ProjectList: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadProjects();
@@ -59,27 +61,27 @@ const ProjectList: React.FC = () => {
   };
 
   if (loading) {
-    return <Typography>Loading projects...</Typography>;
+    return <Typography>{t('projects.loadingProjects')}</Typography>;
   }
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Projects
+          {t('projects.title')}
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => navigate('/projects/new')}
         >
-          New Project
+          {t('projects.newProject')}
         </Button>
       </Box>
 
       <Grid container spacing={3}>
         {projects.map((project) => (
-          <Grid item xs={12} md={6} lg={4} key={project.project_id}>
+          <Grid key={project.project_id} sx={{ width: { xs: '100%', md: '50%', lg: '33.333%' } }}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -104,20 +106,20 @@ const ProjectList: React.FC = () => {
                 </Box>
 
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  {project.description || 'No description'}
+                  {project.description || t('projects.noDescription')}
                 </Typography>
 
                 <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                   <Chip label={project.language} color="primary" size="small" />
                   <Chip
-                    label={project.apply_global_rules ? 'Global Rules' : 'No Global Rules'}
+                    label={project.apply_global_rules ? t('projects.globalRules') : t('projects.noGlobalRules')}
                     color={project.apply_global_rules ? 'success' : 'default'}
                     size="small"
                   />
                 </Box>
 
                 <Typography variant="body2" color="text.secondary">
-                  Rules: {project.rule_count}
+                  {t('projects.rules')}: {project.rule_count}
                 </Typography>
 
                 <Button
@@ -126,7 +128,7 @@ const ProjectList: React.FC = () => {
                   sx={{ mt: 2 }}
                   onClick={() => navigate(`/projects/${project.project_id}/rules/new`)}
                 >
-                  Add Rule
+                  {t('projects.addRule')}
                 </Button>
               </CardContent>
             </Card>
@@ -135,16 +137,16 @@ const ProjectList: React.FC = () => {
       </Grid>
 
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Delete Project</DialogTitle>
+        <DialogTitle>{t('projects.deleteProject')}</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete this project? This action cannot be undone.
+            {t('projects.deleteConfirm')}
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)}>{t('common.cancel')}</Button>
           <Button onClick={handleDelete} color="error" variant="contained">
-            Delete
+            {t('common.delete')}
           </Button>
         </DialogActions>
       </Dialog>
