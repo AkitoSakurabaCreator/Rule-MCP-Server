@@ -16,6 +16,12 @@
     "warning": "تحذير",
     "info": "معلومات"
   },
+  "theme": {
+    "switchToLight": "التبديل إلى الوضع الفاتح",
+    "switchToDark": "التبديل إلى الوضع الداكن",
+    "light": "فاتح",
+    "dark": "داكن"
+  },
   "navigation": {
     "projects": "المشاريع",
     "newProject": "مشروع جديد",
