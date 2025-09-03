@@ -109,9 +109,13 @@ INSERT INTO projects (project_id, name, description, language, apply_global_rule
     ('team-project', 'Team Project', 'Team collaboration project', 'typescript', true, 'user', 'admin')
 ON CONFLICT (project_id) DO NOTHING;
 
+-- Insert initial admin account (default password: admin123)
+INSERT INTO users (username, email, full_name, role) VALUES
+    ('admin', 'admin@rulemcp.com', 'System Administrator', 'admin')
+ON CONFLICT (username) DO NOTHING;
+
 -- Insert sample users
 INSERT INTO users (username, email, full_name, role) VALUES
-    ('admin', 'admin@example.com', 'System Administrator', 'admin'),
     ('developer1', 'dev1@example.com', 'Developer 1', 'user'),
     ('developer2', 'dev2@example.com', 'Developer 2', 'user')
 ON CONFLICT (username) DO NOTHING;
