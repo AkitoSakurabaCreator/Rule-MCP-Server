@@ -201,4 +201,4 @@ target/
 # Local configuration overrides
 *.local.*
 local.*
-frontend/src/stories/button.css
+frontend/src/stories/
