@@ -1,0 +1,62 @@
+# 本番環境用 Dockerfile
+# マルチステージビルドで軽量化
+
+# ビルドステージ
+FROM golang:1.21-alpine AS builder
+
+# 必要なパッケージをインストール
+RUN apk add --no-cache git ca-certificates tzdata
+
+# 作業ディレクトリを設定
+WORKDIR /app
+
+# Go modules ファイルをコピー
+COPY go.mod go.sum ./
+
+# 依存関係をダウンロード
+RUN go mod download
+
+# ソースコードをコピー
+COPY . .
+
+# バイナリをビルド
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
+
+# 実行ステージ
+FROM alpine:latest
+
+# 必要なパッケージをインストール
+RUN apk --no-cache add ca-certificates tzdata curl
+
+# 非rootユーザーを作成
+RUN addgroup -g 1001 -S rulemcp && \
+    adduser -u 1001 -S rulemcp -G rulemcp
+
+# 作業ディレクトリを設定
+WORKDIR /root
+
+# ビルドステージからバイナリをコピー
+COPY --from=builder /app/main .
+
+# 設定ファイルをコピー
+COPY --from=builder /app/rules.json .
+
+# ログディレクトリを作成
+RUN mkdir -p /var/log/rulemcp && \
+    chown -R rulemcp:rulemcp /var/log/rulemcp
+
+# 権限を設定
+RUN chown rulemcp:rulemcp main rules.json
+
+# ユーザーを切り替え
+USER rulemcp
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/api/v1/health || exit 1
+
+# ポートを公開
+EXPOSE 8080
+
+# バイナリを実行
+CMD ["./main"]
