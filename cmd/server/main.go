@@ -21,6 +21,7 @@ func main() {
 	var projectRepo domain.ProjectRepository
 	var ruleRepo domain.RuleRepository
 	var globalRuleRepo domain.GlobalRuleRepository
+	var userRepo domain.UserRepository
 
 	db, err := database.NewPostgresDatabase(
 		os.Getenv("DB_HOST"),
@@ -40,6 +41,7 @@ func main() {
 		projectRepo = db
 		ruleRepo = database.NewPostgresRuleRepository(db.DB)
 		globalRuleRepo = database.NewPostgresGlobalRuleRepository(db.DB)
+		userRepo = database.NewPostgresUserRepository(db.DB)
 	}
 
 	// 本番環境ではGinのデバッグモードを無効化
@@ -67,6 +69,39 @@ func main() {
 	healthHandler := handler.NewHealthHandler()
 	r.GET("/api/v1/health", healthHandler.HealthCheck)
 
+	// 認証エンドポイント（データベース接続なしでも利用可能）
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "default-secret-key-change-in-production"
+	}
+	authHandler := handler.NewAuthHandler(jwtSecret)
+	auth := r.Group("/api/v1/auth")
+	{
+		auth.POST("/login", authHandler.Login)
+		auth.POST("/register", authHandler.Register)
+		auth.GET("/validate", authHandler.ValidateToken)
+		auth.POST("/change-password", authHandler.ChangePassword)
+		auth.GET("/pending-users", authHandler.GetPendingUsers)
+		auth.POST("/approve-user", authHandler.ApproveUser)
+	}
+
+	// 管理者用APIエンドポイント
+	var adminHandler *handler.AdminHandler
+	if projectRepo != nil {
+		adminHandler = handler.NewAdminHandler(userRepo, projectRepo, ruleRepo, globalRuleRepo)
+	} else {
+		// データベースが利用できない場合はモックハンドラーを使用
+		adminHandler = handler.NewAdminHandler(nil, nil, nil, nil)
+	}
+	admin := r.Group("/api/v1/admin")
+	{
+		admin.GET("/stats", adminHandler.GetStats)
+		admin.GET("/users", adminHandler.GetUsers)
+		admin.GET("/api-keys", adminHandler.GetApiKeys)
+		admin.GET("/mcp-stats", adminHandler.GetMcpStats)
+		admin.GET("/system-logs", adminHandler.GetSystemLogs)
+	}
+
 	// データベースが利用可能な場合のみ、管理用エンドポイントを有効化
 	if projectRepo != nil {
 		// ユースケースの初期化
@@ -93,12 +128,16 @@ func main() {
 			api.POST("/rules", ruleHandler.CreateRule)
 			api.DELETE("/rules/:project_id/:rule_id", ruleHandler.DeleteRule)
 			api.POST("/rules/validate", ruleHandler.ValidateCode)
+			api.POST("/rules/export", ruleHandler.ExportRules)
+			api.POST("/rules/import", ruleHandler.ImportRules)
 
 			// グローバルルール管理
 			api.GET("/global-rules/:language", globalRuleHandler.GetGlobalRules)
 			api.POST("/global-rules", globalRuleHandler.CreateGlobalRule)
 			api.DELETE("/global-rules/:language/:rule_id", globalRuleHandler.DeleteGlobalRule)
 			api.GET("/languages", globalRuleHandler.GetLanguages)
+			api.POST("/global-rules/export", globalRuleHandler.ExportGlobalRules)
+			api.POST("/global-rules/import", globalRuleHandler.ImportGlobalRules)
 		}
 	}
 
