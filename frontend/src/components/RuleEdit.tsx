@@ -21,7 +21,11 @@ import { Rule } from '../types';
 import { api } from '../services/api';
 
 const RuleEdit: React.FC = () => {
-  const [rule, setRule] = useState<Partial<Rule>>({});
+  const [rule, setRule] = useState<Partial<Rule>>({
+    is_active: true, // デフォルトで有効状態
+    type: 'style',
+    severity: 'warning'
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,10 +49,22 @@ const RuleEdit: React.FC = () => {
     loadCustomOptions();
   }, [isEditMode, projectId, ruleId]);
 
+  // projectIdが変更された時にルールのproject_idを更新
+  useEffect(() => {
+    if (projectId) {
+      setRule(prev => ({ ...prev, project_id: projectId }));
+    }
+  }, [projectId]);
+
   const loadRule = async () => {
     try {
       const response = await api.get(`/projects/${projectId}/rules/${ruleId}`);
-      setRule(response.data);
+      const loadedRule = response.data;
+      // is_activeがundefinedの場合はtrueに設定
+      if (loadedRule.is_active === undefined) {
+        loadedRule.is_active = true;
+      }
+      setRule(loadedRule);
     } catch (error) {
       setError(t('rules.loadError'));
       console.error('Failed to load rule:', error);
@@ -75,11 +91,17 @@ const RuleEdit: React.FC = () => {
     setSuccess(null);
 
     try {
+      // ルールデータにproject_idを確実に設定
+      const ruleData = {
+        ...rule,
+        project_id: projectId
+      };
+
       if (isEditMode) {
-        await api.put(`/projects/${projectId}/rules/${ruleId}`, rule);
+        await api.put(`/projects/${projectId}/rules/${ruleId}`, ruleData);
         setSuccess(t('rules.editSuccess'));
       } else {
-        await api.post(`/projects/${projectId}/rules`, rule);
+        await api.post('/rules', ruleData);
         setSuccess(t('rules.createSuccess'));
       }
       
@@ -87,6 +109,7 @@ const RuleEdit: React.FC = () => {
         navigate(`/projects/${projectId}/rules`);
       }, 1500);
     } catch (error: any) {
+      console.error('Save error:', error);
       setError(error.response?.data?.error || t('rules.saveError'));
     } finally {
       setSaving(false);
@@ -128,6 +151,13 @@ const RuleEdit: React.FC = () => {
       <CardContent>
         <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
           {isEditMode ? t('rules.editRule') : t('rules.newRule')}
+        </Typography>
+        
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          {isEditMode 
+            ? t('rules.editRuleHelp') 
+            : t('rules.createRuleHelp')
+          }
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -266,15 +296,30 @@ const RuleEdit: React.FC = () => {
             </Grid>
 
             <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={rule.is_active ?? true}
-                    onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                  />
-                }
-                label={t('rules.isActive')}
-              />
+              <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'background.paper' }}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  {t('rules.ruleStatus')}
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={rule.is_active ?? true}
+                      onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                      color="success"
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: rule.is_active ? 'bold' : 'normal' }}>
+                        {rule.is_active ? t('rules.statusActive') : t('rules.statusInactive')}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {rule.is_active ? t('rules.statusActiveHelp') : t('rules.statusInactiveHelp')}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </Box>
             </Grid>
 
             <Grid sx={{ width: '100%' }}>
@@ -284,7 +329,21 @@ const RuleEdit: React.FC = () => {
                 value={rule.pattern || ''}
                 onChange={(e) => handleInputChange('pattern', e.target.value)}
                 required
-                helperText={t('rules.patternHelp')}
+                helperText={
+                  <Box>
+                    <Typography variant="body2" component="span">
+                      {t('rules.patternHelp')}
+                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" component="div" color="text.secondary">
+                        <strong>例:</strong> console\.log, TODO:, api_key, SELECT \* FROM
+                      </Typography>
+                      <Typography variant="caption" component="div" color="text.secondary">
+                        <strong>ヒント:</strong> 特殊文字は \ でエスケープしてください
+                      </Typography>
+                    </Box>
+                  </Box>
+                }
                 placeholder="例: console\.log"
               />
             </Grid>
@@ -298,7 +357,21 @@ const RuleEdit: React.FC = () => {
                 value={rule.message || ''}
                 onChange={(e) => handleInputChange('message', e.target.value)}
                 required
-                helperText={t('rules.messageHelp')}
+                helperText={
+                  <Box>
+                    <Typography variant="body2" component="span">
+                      {t('rules.messageHelp')}
+                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" component="div" color="text.secondary">
+                        <strong>例:</strong> Console.log detected. Use proper logging framework in production.
+                      </Typography>
+                      <Typography variant="caption" component="div" color="text.secondary">
+                        <strong>ヒント:</strong> 開発者にとって分かりやすく、修正方法も含めてください
+                      </Typography>
+                    </Box>
+                  </Box>
+                }
                 placeholder="例: Console.log detected. Use proper logging framework in production."
               />
             </Grid>
