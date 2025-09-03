@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: rule_mcp_user
       POSTGRES_PASSWORD: rule_mcp_password
     ports:
-      - "15432:5432"
+      - "15432:5432"  # 標準5432を避けて15432を使用
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -23,7 +23,7 @@ services:
     build: .
     container_name: rule-mcp-server
     ports:
-      - "18080:8080"
+      - "18080:8080"  # 標準8080を避けて18080を使用
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -46,7 +46,7 @@ services:
       dockerfile: Dockerfile
     container_name: rule-manager-ui
     ports:
-      - "13000:80"
+      - "13000:80"  # 標準80を避けて13000を使用
     depends_on:
       - rule-mcp-server
     restart: unless-stopped
