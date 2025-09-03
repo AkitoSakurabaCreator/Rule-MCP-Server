@@ -10,14 +10,12 @@ import {
   Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../services/api';
-
-const languages = ['general', 'javascript', 'go', 'python', 'java', 'csharp', 'cpp', 'rust'];
-const ruleTypes = ['style', 'security', 'performance', 'maintainability', 'accessibility'];
-const severities = ['error', 'warning', 'info'];
 
 const GlobalRuleForm: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -41,12 +39,12 @@ const GlobalRuleForm: React.FC = () => {
 
     try {
       await api.post('/global-rules', formData);
-      setSuccess('Global rule created successfully!');
+      setSuccess(t('globalRules.createSuccess'));
       setTimeout(() => {
         navigate('/');
       }, 1500);
     } catch (error: any) {
-      setError(error.response?.data?.error || 'An error occurred');
+      setError(error.response?.data?.error || t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -63,7 +61,7 @@ const GlobalRuleForm: React.FC = () => {
     <Card>
       <CardContent>
         <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
-          New Global Rule
+          {t('globalRules.newGlobalRule')}
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -72,105 +70,106 @@ const GlobalRuleForm: React.FC = () => {
         <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
             select
-            label="Language"
+            label={t('globalRules.language')}
             value={formData.language}
             onChange={(e) => handleChange('language', e.target.value)}
             required
-            helperText="Programming language for this global rule"
+            helperText={t('globalRules.languageHelp')}
           >
-            {languages.map((lang) => (
-              <MenuItem key={lang} value={lang}>
-                {lang.charAt(0).toUpperCase() + lang.slice(1)}
+            {Object.entries(t('languages', { returnObjects: true })).map(([key, value]) => (
+              <MenuItem key={key} value={key}>
+                {value as string}
               </MenuItem>
             ))}
           </TextField>
 
           <TextField
-            label="Rule ID"
+            label={t('rules.ruleId')}
             value={formData.rule_id}
             onChange={(e) => handleChange('rule_id', e.target.value)}
             required
-            helperText="Unique identifier for the global rule"
+            helperText={t('globalRules.ruleIdHelp')}
           />
 
           <TextField
-            label="Name"
+            label={t('rules.name')}
             value={formData.name}
             onChange={(e) => handleChange('name', e.target.value)}
             required
-            helperText="Display name for the global rule"
+            helperText={t('globalRules.nameHelp')}
           />
 
           <TextField
-            label="Description"
+            label={t('rules.description')}
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             multiline
             rows={3}
-            helperText="Description of what this global rule checks"
+            helperText={t('globalRules.descriptionHelp')}
           />
 
           <TextField
             select
-            label="Type"
+            label={t('rules.type')}
             value={formData.type}
             onChange={(e) => handleChange('type', e.target.value)}
             required
-            helperText="Category of the global rule"
+            helperText={t('globalRules.typeHelp')}
           >
-            {ruleTypes.map((type) => (
-              <MenuItem key={type} value={type}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
+            {Object.entries(t('types', { returnObjects: true })).map(([key, value]) => (
+              <MenuItem key={key} value={key}>
+                {value as string}
               </MenuItem>
             ))}
           </TextField>
 
           <TextField
             select
-            label="Severity"
+            label={t('rules.severity')}
             value={formData.severity}
             onChange={(e) => handleChange('severity', e.target.value)}
             required
-            helperText="How serious is this global rule violation"
+            helperText={t('globalRules.severityHelp')}
           >
-            {severities.map((severity) => (
-              <MenuItem key={severity} value={severity}>
-                {severity.charAt(0).toUpperCase() + severity.slice(1)}
+            {Object.entries(t('severity', { returnObjects: true })).map(([key, value]) => (
+              <MenuItem key={key} value={key}>
+                {value as string}
               </MenuItem>
             ))}
           </TextField>
 
           <TextField
-            label="Pattern (Regex)"
+            label={t('rules.pattern')}
             value={formData.pattern}
             onChange={(e) => handleChange('pattern', e.target.value)}
             required
-            helperText="Regular expression pattern to match violations"
+            helperText={t('globalRules.patternHelp')}
           />
 
           <TextField
-            label="Message"
+            label={t('rules.message')}
             value={formData.message}
             onChange={(e) => handleChange('message', e.target.value)}
             required
-            helperText="Message to display when global rule is violated"
+            multiline
+            rows={2}
+            helperText={t('globalRules.messageHelp')}
           />
 
-          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading}
-              sx={{ minWidth: 120 }}
-            >
-              {loading ? 'Creating...' : 'Create Global Rule'}
-            </Button>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               onClick={() => navigate('/')}
               disabled={loading}
             >
-              Cancel
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading}
+            >
+              {loading ? t('common.loading') : t('common.add')}
             </Button>
           </Box>
         </Box>
