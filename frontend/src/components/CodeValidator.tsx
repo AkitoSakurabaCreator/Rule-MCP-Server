@@ -66,27 +66,7 @@ const CodeValidator: React.FC = () => {
     }
   };
 
-  const getSeverityIcon = (severity: string) => {
-    switch (severity) {
-      case 'error':
-        return <ErrorIcon color="error" />;
-      case 'warning':
-        return <WarningIcon color="warning" />;
-      default:
-        return <CheckIcon color="info" />;
-    }
-  };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'error':
-        return 'error.main';
-      case 'warning':
-        return 'warning.main';
-      default:
-        return 'info.main';
-    }
-  };
 
   return (
     <Card>
