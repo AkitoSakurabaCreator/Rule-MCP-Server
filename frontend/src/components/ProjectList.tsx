@@ -125,10 +125,18 @@ const ProjectList: React.FC = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  sx={{ mt: 2 }}
+                  sx={{ mt: 2, mr: 1 }}
                   onClick={() => navigate(`/projects/${project.project_id}/rules/new`)}
                 >
                   {t('projects.addRule')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{ mt: 2 }}
+                  onClick={() => navigate(`/projects/${project.project_id}/rules`)}
+                >
+                  {t('projects.viewRules')}
                 </Button>
               </CardContent>
             </Card>
