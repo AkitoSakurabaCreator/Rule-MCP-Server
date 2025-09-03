@@ -1,0 +1,35 @@
+# フロントエンド本番環境用 Dockerfile
+# マルチステージビルドで軽量化
+
+# ビルドステージ
+FROM node:18-alpine AS builder
+
+# 作業ディレクトリを設定
+WORKDIR /app
+
+# package.json と package-lock.json をコピー
+COPY package*.json ./
+
+# 依存関係をインストール
+RUN npm ci --only=production
+
+# ソースコードをコピー
+COPY . .
+
+# 本番用ビルド
+RUN npm run build
+
+# 実行ステージ
+FROM nginx:alpine
+
+# カスタムnginx設定をコピー
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# ビルドされたファイルをコピー
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# ポートを公開
+EXPOSE 80
+
+# nginxを起動
+CMD ["nginx", "-g", "daemon off;"]
