@@ -102,6 +102,16 @@ func main() {
 		}
 	}
 
+	// MCP プロトコルエンドポイント（データベース接続なしでも利用可能）
+	// 簡易版のMCPハンドラーを作成
+	mcpHandler := handler.NewSimpleMCPHandler()
+
+	mcp := r.Group("/mcp")
+	{
+		mcp.POST("/request", mcpHandler.HandleMCPRequest)
+		mcp.GET("/ws", mcpHandler.HandleWebSocket)
+	}
+
 	log.Printf("Rule MCP Server starting on %s", cfg.GetAddress())
 	log.Printf("Environment: %s, Log Level: %s", cfg.Environment, cfg.LogLevel)
 	if projectRepo != nil {
@@ -109,6 +119,7 @@ func main() {
 	} else {
 		log.Printf("Database: JSON file mode")
 	}
+	log.Printf("MCP Endpoints: /mcp/request, /mcp/ws")
 
 	if err := r.Run(cfg.GetAddress()); err != nil {
 		log.Fatal("Failed to start server:", err)
