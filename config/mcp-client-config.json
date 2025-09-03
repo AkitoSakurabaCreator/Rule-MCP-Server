@@ -1,0 +1,285 @@
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "curl",
+      "args": [
+        "-X", "POST",
+        "-H", "Content-Type: application/json",
+        "-H", "X-API-Key: ${MCP_API_KEY}",
+        "-d", "{\"id\":\"${requestId}\",\"method\":\"${method}\",\"params\":${params}}",
+        "${MCP_SERVER_URL}/mcp/request"
+      ],
+      "env": {
+        "MCP_SERVER_URL": "http://localhost:18081",
+        "MCP_API_KEY": "your_api_key_here",
+        "MCP_ACCESS_LEVEL": "user",
+        "AUTO_INJECT": "true"
+      },
+      "description": "Rule MCP Server with authentication and team collaboration support",
+      "capabilities": {
+        "tools": [
+          {
+            "name": "getRules",
+            "description": "Get coding rules for a specific project (public access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to get rules for"
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Programming language (optional)"
+                },
+                "access_level": {
+                  "type": "string",
+                  "description": "Access level filter (public, user, admin)"
+                }
+              },
+              "required": ["project_id"]
+            }
+          },
+          {
+            "name": "validateCode",
+            "description": "Validate code against project rules (public access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to validate against"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "The code to validate"
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Programming language (optional)"
+                }
+              },
+              "required": ["project_id", "code"]
+            }
+          },
+          {
+            "name": "getProjectInfo",
+            "description": "Get information about a specific project (public access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to get info for"
+                }
+              },
+              "required": ["project_id"]
+            }
+          },
+          {
+            "name": "getGlobalRules",
+            "description": "Get global rules for a specific language (public access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "language": {
+                  "type": "string",
+                  "description": "Programming language"
+                },
+                "access_level": {
+                  "type": "string",
+                  "description": "Access level filter (public, user, admin)"
+                }
+              },
+              "required": ["language"]
+            }
+          },
+          {
+            "name": "createRule",
+            "description": "Create a new rule (requires user/admin access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to create the rule for"
+                },
+                "rule_id": {
+                  "type": "string",
+                  "description": "Unique identifier for the rule"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Human-readable name for the rule"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Detailed description of the rule"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Rule type (style, security, quality, etc.)"
+                },
+                "severity": {
+                  "type": "string",
+                  "description": "Rule severity (info, warning, error)"
+                },
+                "pattern": {
+                  "type": "string",
+                  "description": "Regex pattern to match violations"
+                },
+                "message": {
+                  "type": "string",
+                  "description": "Message to display when rule is violated"
+                },
+                "access_level": {
+                  "type": "string",
+                  "description": "Access level for the rule (public, user, admin)"
+                }
+              },
+              "required": ["project_id", "rule_id", "name", "type", "severity", "pattern", "message"]
+            }
+          },
+          {
+            "name": "updateRule",
+            "description": "Update an existing rule (requires user/admin access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID containing the rule"
+                },
+                "rule_id": {
+                  "type": "string",
+                  "description": "The rule ID to update"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Updated name for the rule"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Updated description of the rule"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Updated rule type"
+                },
+                "severity": {
+                  "type": "string",
+                  "description": "Updated rule severity"
+                },
+                "pattern": {
+                  "type": "string",
+                  "description": "Updated regex pattern"
+                },
+                "message": {
+                  "type": "string",
+                  "description": "Updated violation message"
+                },
+                "is_active": {
+                  "type": "boolean",
+                  "description": "Whether the rule is active"
+                }
+              },
+              "required": ["project_id", "rule_id"]
+            }
+          },
+          {
+            "name": "deleteRule",
+            "description": "Delete a rule (requires admin access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID containing the rule"
+                },
+                "rule_id": {
+                  "type": "string",
+                  "description": "The rule ID to delete"
+                }
+              },
+              "required": ["project_id", "rule_id"]
+            }
+          },
+          {
+            "name": "createProject",
+            "description": "Create a new project (requires user/admin access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "Unique identifier for the project"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Human-readable name for the project"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Project description"
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Primary programming language"
+                },
+                "apply_global_rules": {
+                  "type": "boolean",
+                  "description": "Whether to apply global rules"
+                },
+                "access_level": {
+                  "type": "string",
+                  "description": "Project access level (public, user, private)"
+                }
+              },
+              "required": ["project_id", "name"]
+            }
+          },
+          {
+            "name": "getTeamMembers",
+            "description": "Get team members for a project (requires project membership)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to get members for"
+                }
+              },
+              "required": ["project_id"]
+            }
+          },
+          {
+            "name": "addTeamMember",
+            "description": "Add a team member to a project (requires admin access)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to add member to"
+                },
+                "username": {
+                  "type": "string",
+                  "description": "Username of the member to add"
+                },
+                "role": {
+                  "type": "string",
+                  "description": "Member role (member, admin)"
+                },
+                "permissions": {
+                  "type": "object",
+                  "description": "Custom permissions for the member"
+                }
+              },
+              "required": ["project_id", "username"]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
