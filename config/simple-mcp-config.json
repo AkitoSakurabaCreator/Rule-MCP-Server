@@ -1,0 +1,75 @@
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "curl",
+      "args": [
+        "-X", "POST",
+        "-H", "Content-Type: application/json",
+        "-d", "{\"id\":\"${requestId}\",\"method\":\"${method}\",\"params\":${params}}",
+        "http://localhost:18081/mcp/request"
+      ],
+      "env": {
+        "MCP_SERVER_URL": "http://localhost:18081"
+      },
+      "description": "Rule MCP Server for AI agents to retrieve and apply common rules",
+      "capabilities": {
+        "tools": [
+          {
+            "name": "getRules",
+            "description": "Get coding rules for a specific project",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to get rules for"
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Programming language (optional)"
+                }
+              },
+              "required": ["project_id"]
+            }
+          },
+          {
+            "name": "validateCode",
+            "description": "Validate code against project rules",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to validate against"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "The code to validate"
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Programming language (optional)"
+                }
+              },
+              "required": ["project_id", "code"]
+            }
+          },
+          {
+            "name": "getProjectInfo",
+            "description": "Get information about a specific project",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "project_id": {
+                  "type": "string",
+                  "description": "The project ID to get info for"
+                }
+              },
+              "required": ["project_id"]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
