@@ -16,6 +16,12 @@
     "warning": "Advertencia",
     "info": "Información"
   },
+  "theme": {
+    "switchToLight": "Cambiar a Modo Claro",
+    "switchToDark": "Cambiar a Modo Oscuro",
+    "light": "Claro",
+    "dark": "Oscuro"
+  },
   "navigation": {
     "projects": "Proyectos",
     "newProject": "Nuevo Proyecto",
