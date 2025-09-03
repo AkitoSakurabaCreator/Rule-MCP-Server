@@ -441,6 +441,16 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
+#### 5. 認証エラー
+
+```bash
+# APIキーの確認
+curl -H "X-API-Key: your_api_key" http://localhost:18081/api/v1/projects
+
+# 権限レベルの確認
+curl -H "X-API-Key: your_api_key" http://localhost:18081/api/v1/auth/me
+```
+
 ### ログ確認
 
 ```bash
@@ -452,6 +462,178 @@ docker logs rule-mcp-postgres
 
 # フロントエンドログ
 cd frontend && npm start
+```
+
+## 権限管理システム
+
+### アクセスレベル
+
+Rule MCP Serverは3段階のアクセスレベルを提供します：
+
+#### **Public（公開）**
+- **認証**: 不要
+- **権限**: 公開ルール・プロジェクトの閲覧、コード検証
+- **用途**: 個人使用、オープンソースプロジェクト
+- **MCPアクセス**: 制限なし（レート制限あり）
+
+#### **User（ユーザー）**
+- **認証**: APIキー必須
+- **権限**: 個人ルール・プロジェクトの作成・編集・削除
+- **用途**: 個人開発者、小規模チーム
+- **MCPアクセス**: 制限なし
+
+#### **Admin（管理者）**
+- **認証**: 管理者APIキー必須
+- **権限**: 全権限（ユーザー管理、グローバルルール管理）
+- **用途**: チームリーダー、システム管理者
+- **MCPアクセス**: 制限なし
+
+### 認証方式
+
+#### **APIキー認証**
+```bash
+# ヘッダーでの認証
+curl -H "X-API-Key: your_api_key" http://localhost:18081/api/v1/projects
+
+# MCPリクエストでの認証
+curl -X POST http://localhost:18081/mcp/request \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"test","method":"createRule","params":{...}}'
+```
+
+#### **セッション認証**
+```bash
+# ログイン
+curl -X POST http://localhost:18081/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user","password":"password"}'
+
+# セッションでの認証
+curl -H "Cookie: session=session_token" http://localhost:18081/api/v1/projects
+```
+
+### チーム協働機能
+
+#### **プロジェクトメンバー管理**
+```bash
+# チームメンバーの追加
+curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
+  -H "X-API-Key: admin_key" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"developer1","role":"member"}'
+
+# チームメンバーの権限確認
+curl http://localhost:18081/api/v1/projects/team-project/members \
+  -H "X-API-Key: user_key"
+```
+
+#### **プロジェクト可視性**
+- **Public**: 全ユーザーが閲覧可能
+- **Team**: チームメンバーのみ閲覧可能
+- **Private**: プロジェクト所有者のみ閲覧可能
+
+#### **権限の細分化**
+```json
+{
+  "permissions": {
+    "read": true,    // ルール・プロジェクトの閲覧
+    "write": true,   // ルール・プロジェクトの作成・編集
+    "delete": false, // ルール・プロジェクトの削除
+    "admin": false   // メンバー管理
+  }
+}
+```
+
+## 設定ファイル
+
+### **認証設定** (`config/auth.yaml`)
+権限レベル、レート制限、セキュリティ設定を定義
+
+### **環境変数** (`config/environment.md`)
+サーバー、データベース、認証、MCP設定の環境変数一覧
+
+### **MCPクライアント設定**
+- **`config/simple-mcp-config.json`**: シンプル版MCP設定（認証なし、初心者向け）
+- **`config/mcp-client-config.json`**: 完全版MCP設定（認証・チーム機能対応）
+
+### **データベーススキーマ** (`init.sql`)
+権限管理テーブル、ユーザー管理、チーム協働機能を含む完全なスキーマ
+
+## セキュリティ機能
+
+### **レート制限**
+- **Public**: 50 req/min（制限付き）
+- **User**: 100 req/min
+- **Admin**: 200 req/min
+
+### **監査ログ**
+- 認証試行の記録
+- 権限変更の記録
+- ルール変更の記録
+- 保持期間: 365日
+
+### **パスワードポリシー**
+- 最小8文字
+- 大文字・小文字・数字・特殊文字必須
+- セッションタイムアウト: 8時間
+
+### **APIキーセキュリティ**
+- bcryptハッシュ化
+- 有効期限設定
+- HTTPS必須（本番環境）
+- 使用ログ記録
+
+## 使用例
+
+### **個人使用（Public）**
+```bash
+# 認証なしでルール取得
+curl http://localhost:18081/api/v1/rules?project_id=web-app
+
+# MCP経由でコード検証
+curl -X POST http://localhost:18081/mcp/request \
+  -H "Content-Type: application/json" \
+  -d '{"id":"test","method":"validateCode","params":{"project_id":"web-app","code":"console.log(\"test\")"}}'
+```
+
+### **チーム使用（User/Admin）**
+```bash
+# APIキーでルール作成
+curl -X POST http://localhost:18081/api/v1/rules \
+  -H "X-API-Key: user_key" \
+  -H "Content-Type: application/json" \
+  -d '{"project_id":"team-project","rule_id":"no-todo","name":"No TODO","type":"quality","severity":"warning","pattern":"TODO:","message":"TODO comment detected"}'
+
+# チームメンバー管理
+curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
+  -H "X-API-Key: admin_key" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"new_dev","role":"member"}'
+```
+
+### **MCPクライアント設定**
+```json
+// ~/.cursor/mcp.json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "curl",
+      "args": [
+        "-X", "POST",
+        "-H", "Content-Type: application/json",
+        "-H", "X-API-Key: ${MCP_API_KEY}",
+        "-d", "{\"id\":\"${requestId}\",\"method\":\"${method}\",\"params\":${params}}",
+        "${MCP_SERVER_URL}/mcp/request"
+      ],
+      "env": {
+        "MCP_SERVER_URL": "http://localhost:18081",
+        "MCP_API_KEY": "your_api_key_here",
+        "AUTO_INJECT": "true"
+      }
+    }
+  }
+}
 ```
 
 ## 貢献
