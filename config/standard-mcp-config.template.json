@@ -1,0 +1,28 @@
+{
+  "_comment": "Rule MCP Server - Standard Configuration Template",
+  "_instructions": [
+    "1. Copy this file to your MCP settings directory",
+    "2. Replace ${PROJECT_PATH} with the full path to your RuleMCPServer directory",
+    "3. Replace ${RULE_SERVER_URL} with your server URL (default: http://localhost:18080)",
+    "4. Replace ${MCP_API_KEY} with your API key (optional, leave empty for public access)",
+    "5. Remove these comment lines before using"
+  ],
+  "_examples": {
+    "PROJECT_PATH": "/path/to/your/RuleMCPServer",
+    "RULE_SERVER_URL": "http://localhost:18080",
+    "MCP_API_KEY": "your-api-key-here"
+  },
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "node",
+      "args": ["${PROJECT_PATH}/cmd/mcp-server/build/index.js"],
+      "env": {
+        "RULE_SERVER_URL": "${RULE_SERVER_URL:-http://localhost:18080}",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
