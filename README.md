@@ -273,6 +273,243 @@ GET  /mcp/ws         # WebSocket MCP接続
 }
 ```
 
+## MCP（Model Context Protocol）機能
+
+### 基本機能
+
+- **`getRules`**: プロジェクトIDとオプションの言語を指定してルールを取得
+- **`validateCode`**: コードのルール違反を検証
+- **`getProjectInfo`**: プロジェクト情報を取得
+
+### プロジェクト自動検出機能 🆕
+
+AIエージェントが**自動的にプロジェクトを認識**し、適切なルールを取得できる高度な機能です。
+
+#### **自動検出の優先順位**
+
+1. **ディレクトリ名ベース検出**（信頼度95%）
+   - ディレクトリ名をプロジェクトIDとして検索
+   - 除外ディレクトリ: `node_modules`, `vendor`, `dist`, `build`, `target`, `.git`, `.vscode`
+
+2. **Gitリポジトリ名検出**（信頼度90%）
+   - `.git/config`からorigin URLを解析
+   - SSH形式: `git@github.com:username/repo-name.git`
+   - HTTPS形式: `https://github.com/username/repo-name.git`
+
+3. **言語固有ファイル検出**（信頼度85%）
+   - `go.mod` → Goプロジェクト
+   - `package.json` → Node.jsプロジェクト
+   - `requirements.txt` → Pythonプロジェクト
+   - `pom.xml` → Javaプロジェクト
+   - `Cargo.toml` → Rustプロジェクト
+   - `composer.json` → PHPプロジェクト
+   - `Gemfile` → Rubyプロジェクト
+
+4. **デフォルトプロジェクト**（信頼度70%）
+   - 検出できない場合のフォールバック
+
+#### **新しいMCPメソッド**
+
+##### **`autoDetectProject`**
+指定されたパスからプロジェクトを自動検出します。
+
+```json
+{
+  "id": "auto-detect",
+  "method": "autoDetectProject",
+  "params": {
+    "path": "/path/to/your/project"
+  }
+}
+```
+
+**レスポンス例:**
+```json
+{
+  "id": "auto-detect",
+  "result": {
+    "project": {
+      "project_id": "web-app",
+      "name": "Web Application",
+      "language": "javascript"
+    },
+    "rules": [...],
+    "detection_method": "directory_name",
+    "confidence": 0.95,
+    "message": "ディレクトリ名 'web-app' からプロジェクトを検出しました"
+  }
+}
+```
+
+##### **`scanLocalProjects`**
+ローカルディレクトリを再帰的にスキャンしてプロジェクトを検出します。
+
+```json
+{
+  "id": "scan-local",
+  "method": "scanLocalProjects",
+  "params": {
+    "base_path": "/home/user/projects"
+  }
+}
+```
+
+**レスポンス例:**
+```json
+{
+  "id": "scan-local",
+  "result": {
+    "projects": [
+      {
+        "project": {...},
+        "rules": [...],
+        "detection_method": "git_repository",
+        "confidence": 0.90,
+        "message": "Gitリポジトリ名からプロジェクトを検出しました"
+      }
+    ],
+    "count": 3
+  }
+}
+```
+
+#### **使用例**
+
+##### **Cursor/Clineでの設定**
+
+###### **1. cursor-mcp-config.json（推奨）**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081",
+        "DB_HOST": "localhost",
+        "DB_PORT": "15432",
+        "DB_USER": "rule_mcp_user",
+        "DB_PASSWORD": "rule_mcp_password",
+        "DB_NAME": "rule_mcp_db"
+      }
+    }
+  }
+}
+```
+
+**ファイル配置場所:**
+- **Cursor**: `~/.cursor/mcp-servers/rule-mcp.json`
+- **Cline**: `~/.cline/mcp-servers/rule-mcp.json`
+
+###### **2. mcp-client-config.json（完全版）**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081",
+        "DB_HOST": "localhost",
+        "DB_PORT": "15432",
+        "DB_USER": "rule_mcp_user",
+        "DB_PASSWORD": "rule_mcp_password",
+        "DB_NAME": "rule_mcp_db"
+      },
+      "cwd": "/path/to/your/RuleMCPServer"
+    }
+  }
+}
+```
+
+###### **3. 環境変数なし（JSONファイルモード）**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081"
+      }
+    }
+  }
+}
+```
+
+##### **設定の説明**
+
+| パラメータ | 説明             | 必須 | デフォルト                |
+|------------|------------------|------|---------------------------|
+| `command`  | 実行するコマンド | ✅    | `go`                      |
+| `args`     | コマンドの引数   | ✅    | `["run", "./cmd/server"]` |
+| `env`      | 環境変数         | ❌    | なし                      |
+| `cwd`      | 作業ディレクトリ | ❌    | カレントディレクトリ      |
+
+##### **環境別の設定例**
+
+###### **開発環境（JSONファイルモード）**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081"
+      }
+    }
+  }
+}
+```
+
+###### **本番環境（PostgreSQL接続）**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081",
+        "DB_HOST": "your-db-host",
+        "DB_PORT": "5432",
+        "DB_USER": "your-db-user",
+        "DB_PASSWORD": "your-db-password",
+        "DB_NAME": "your-db-name"
+      }
+    }
+  }
+}
+```
+
+##### **設定ファイルの優先順位**
+
+1. **プロジェクト固有**: `./cursor-mcp-config.json`
+2. **ユーザー設定**: `~/.cursor/mcp-servers/rule-mcp.json`
+3. **グローバル設定**: `~/.cursor/mcp-servers/rule-mcp.json`
+
+##### **トラブルシューティング**
+
+###### **よくある問題と解決方法**
+
+| 問題                         | 原因              | 解決方法                 |
+|------------------------------|-------------------|--------------------------|
+| `Method not found`           | 古いMCPハンドラー | サーバーを再起動         |
+| `Connection refused`         | ポートが使用中    | `lsof -i :18081`で確認   |
+| `Database connection failed` | DB接続設定ミス    | 環境変数を確認           |
+| `Permission denied`          | ファイル権限      | `chmod +x`で実行権限付与 |
+
+##### **AIエージェントの自動検出**
+AIエージェントは以下のように自動的にプロジェクトを認識できます：
+
+1. **作業ディレクトリの自動検出**
+2. **適切なルールセットの取得**
+3. **言語固有のルール適用**
+4. **プロジェクト固有のルール適用**
+
+これにより、AIエージェントは**コンテキストを理解せずに**、常に適切なルールでコードレビューや提案を行うことができます。
+
 ## フロントエンド機能
 
 ### 多言語対応（i18n）
