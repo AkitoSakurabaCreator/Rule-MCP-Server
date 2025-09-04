@@ -1,0 +1,34 @@
+{
+  "_comment": "Rule MCP Server - Docker Environment Configuration Template",
+  "_instructions": [
+    "1. This configuration is for Docker environment",
+    "2. Replace ${PROJECT_PATH} with the full path to your RuleMCPServer directory",
+    "3. The RULE_SERVER_URL points to Docker host port 18080",
+    "4. Replace ${MCP_API_KEY} with your API key (optional, leave empty for public access)",
+    "5. Remove these comment lines before using"
+  ],
+  "_docker_info": {
+    "rule_server_host_port": "18080",
+    "rule_server_container_port": "8080",
+    "postgres_host_port": "15432",
+    "frontend_host_port": "13000"
+  },
+  "_examples": {
+    "PROJECT_PATH": "/path/to/your/RuleMCPServer",
+    "RULE_SERVER_URL": "http://localhost:18080",
+    "MCP_API_KEY": "your-api-key-here"
+  },
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "node",
+      "args": ["${PROJECT_PATH}/cmd/mcp-server/build/index.js"],
+      "env": {
+        "RULE_SERVER_URL": "${RULE_SERVER_URL:-http://localhost:18080}",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management (Docker Environment) - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
