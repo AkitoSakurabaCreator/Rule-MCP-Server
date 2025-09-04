@@ -6,7 +6,7 @@ import (
 	"github.com/opm008077/RuleMCPServer/internal/domain"
 )
 
-// Projects テスト用プロジェクトデータ
+// Projects test project data
 var Projects = []domain.Project{
 	{
 		ProjectID:        "default",
@@ -54,7 +54,7 @@ var Projects = []domain.Project{
 	},
 }
 
-// ProjectByID 指定されたIDのプロジェクトを取得
+// ProjectByID retrieves a project with the specified ID
 func ProjectByID(projectID string) *domain.Project {
 	for _, project := range Projects {
 		if project.ProjectID == projectID {
@@ -64,7 +64,7 @@ func ProjectByID(projectID string) *domain.Project {
 	return nil
 }
 
-// ProjectsByLanguage 指定された言語のプロジェクトを取得
+// ProjectsByLanguage retrieves projects for the specified language
 func ProjectsByLanguage(language string) []domain.Project {
 	var filteredProjects []domain.Project
 	for _, project := range Projects {
@@ -75,7 +75,7 @@ func ProjectsByLanguage(language string) []domain.Project {
 	return filteredProjects
 }
 
-// PublicProjects パブリックアクセスのプロジェクトを取得
+// PublicProjects retrieves projects with public access
 func PublicProjects() []domain.Project {
 	var publicProjects []domain.Project
 	for _, project := range Projects {
