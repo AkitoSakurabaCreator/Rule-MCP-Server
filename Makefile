@@ -30,6 +30,19 @@ run-prod:
 run-frontend:
 	cd frontend && npm start
 
+# MCP サーバー関連
+install-mcp:
+	cd cmd/mcp-server && npm install
+
+build-mcp:
+	cd cmd/mcp-server && npm run build
+
+run-mcp:
+	cd cmd/mcp-server && npm run dev
+
+clean-mcp:
+	cd cmd/mcp-server && npm run clean
+
 # クリーンアップ
 clean:
 	rm -f rule-mcp-server
