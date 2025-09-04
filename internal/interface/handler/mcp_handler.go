@@ -13,12 +13,14 @@ import (
 type MCPHandler struct {
 	ruleUseCase       *usecase.RuleUseCase
 	globalRuleUseCase *usecase.GlobalRuleUseCase
+	projectDetector   *usecase.ProjectDetector
 }
 
-func NewMCPHandler(ruleUseCase *usecase.RuleUseCase, globalRuleUseCase *usecase.GlobalRuleUseCase) *MCPHandler {
+func NewMCPHandler(ruleUseCase *usecase.RuleUseCase, globalRuleUseCase *usecase.GlobalRuleUseCase, projectDetector *usecase.ProjectDetector) *MCPHandler {
 	return &MCPHandler{
 		ruleUseCase:       ruleUseCase,
 		globalRuleUseCase: globalRuleUseCase,
+		projectDetector:   projectDetector,
 	}
 }
 
@@ -37,6 +39,10 @@ func (h *MCPHandler) HandleMCPRequest(c *gin.Context) {
 		h.handleValidateCode(c, req)
 	case "getProjectInfo":
 		h.handleGetProjectInfo(c, req)
+	case "autoDetectProject":
+		h.handleAutoDetectProject(c, req)
+	case "scanLocalProjects":
+		h.handleScanLocalProjects(c, req)
 	default:
 		h.sendMCPError(c, req.ID, 404, "Method not found: "+req.Method)
 	}
@@ -187,6 +193,86 @@ func (h *MCPHandler) handleGetProjectInfo(c *gin.Context, req domain.MCPRequest)
 	// Get project information - this method needs to be implemented in usecase
 	// For now, return an error
 	h.sendMCPError(c, req.ID, 501, "getProjectInfo not yet implemented")
+}
+
+// handleAutoDetectProject handles the autoDetectProject MCP method
+func (h *MCPHandler) handleAutoDetectProject(c *gin.Context, req domain.MCPRequest) {
+	var params struct {
+		Path string `json:"path"`
+	}
+
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		return
+	}
+
+	if params.Path == "" {
+		h.sendMCPError(c, req.ID, 400, "Path is required")
+		return
+	}
+
+	// Auto-detect project
+	result, err := h.projectDetector.AutoDetectProject(params.Path)
+	if err != nil {
+		h.sendMCPError(c, req.ID, 404, "Project not found: "+err.Error())
+		return
+	}
+
+	// Convert result to JSON
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		h.sendMCPError(c, req.ID, 500, "Failed to serialize result")
+		return
+	}
+
+	response := domain.MCPResponse{
+		ID:     req.ID,
+		Result: resultJSON,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// handleScanLocalProjects handles the scanLocalProjects MCP method
+func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPRequest) {
+	var params struct {
+		BasePath string `json:"base_path"`
+	}
+
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		return
+	}
+
+	if params.BasePath == "" {
+		params.BasePath = "/" // デフォルトはルートディレクトリ
+	}
+
+	// Scan local projects
+	results, err := h.projectDetector.ScanLocalProjects(params.BasePath)
+	if err != nil {
+		h.sendMCPError(c, req.ID, 500, "Failed to scan local projects: "+err.Error())
+		return
+	}
+
+	// Convert results to JSON
+	responseData := gin.H{
+		"projects": results,
+		"count":    len(results),
+	}
+
+	responseJSON, err := json.Marshal(responseData)
+	if err != nil {
+		h.sendMCPError(c, req.ID, 500, "Failed to serialize results")
+		return
+	}
+
+	response := domain.MCPResponse{
+		ID:     req.ID,
+		Result: responseJSON,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // sendMCPResponse sends a successful MCP response
