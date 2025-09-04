@@ -21,7 +21,7 @@ func LoadConfig() *Config {
 		LogLevel:    "info",
 	}
 
-	// 環境変数から設定を読み込み
+	// Load configuration from environment variables
 	if portStr := os.Getenv("PORT"); portStr != "" {
 		if port, err := strconv.Atoi(portStr); err == nil {
 			config.Port = port
