@@ -202,3 +202,6 @@ target/
 *.local.*
 local.*
 frontend/src/stories/
+
+
+cmd/mcp-server/node_modules
