@@ -23,8 +23,10 @@ type PostgresGlobalRuleRepository struct {
 
 // Ensure PostgresDatabase implements ProjectRepository
 var _ domain.ProjectRepository = (*PostgresDatabase)(nil)
+
 // Ensure PostgresRuleRepository implements RuleRepository
 var _ domain.RuleRepository = (*PostgresRuleRepository)(nil)
+
 // Ensure PostgresGlobalRuleRepository implements GlobalRuleRepository
 var _ domain.GlobalRuleRepository = (*PostgresGlobalRuleRepository)(nil)
 
@@ -67,12 +69,12 @@ func (d *PostgresDatabase) Create(project *domain.Project) error {
 func (d *PostgresDatabase) GetByID(projectID string) (*domain.Project, error) {
 	query := `SELECT project_id, name, description, language, apply_global_rules, created_at, updated_at 
 			  FROM projects WHERE project_id = $1`
-	
+
 	var project domain.Project
 	err := d.DB.QueryRow(query, projectID).Scan(
 		&project.ProjectID, &project.Name, &project.Description, &project.Language,
 		&project.ApplyGlobalRules, &project.CreatedAt, &project.UpdatedAt)
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +84,7 @@ func (d *PostgresDatabase) GetByID(projectID string) (*domain.Project, error) {
 func (d *PostgresDatabase) GetAll() ([]*domain.Project, error) {
 	query := `SELECT project_id, name, description, language, apply_global_rules, created_at, updated_at 
 			  FROM projects ORDER BY created_at DESC`
-	
+
 	rows, err := d.DB.Query(query)
 	if err != nil {
 		return nil, err
@@ -128,7 +130,7 @@ func (d *PostgresRuleRepository) Create(rule *domain.Rule) error {
 func (d *PostgresRuleRepository) GetByProjectID(projectID string) ([]*domain.Rule, error) {
 	query := `SELECT id, project_id, rule_id, name, description, type, severity, pattern, message, is_active 
 			  FROM rules WHERE project_id = $1 AND is_active = true ORDER BY severity DESC, name ASC`
-	
+
 	rows, err := d.DB.Query(query, projectID)
 	if err != nil {
 		return nil, err
@@ -167,7 +169,7 @@ func (d *PostgresGlobalRuleRepository) Create(rule *domain.GlobalRule) error {
 func (d *PostgresGlobalRuleRepository) GetByLanguage(language string) ([]*domain.GlobalRule, error) {
 	query := `SELECT id, language, rule_id, name, description, type, severity, pattern, message, is_active 
 			  FROM global_rules WHERE language = $1 AND is_active = true ORDER BY severity DESC, name ASC`
-	
+
 	rows, err := d.DB.Query(query, language)
 	if err != nil {
 		return nil, err
@@ -191,7 +193,7 @@ func (d *PostgresGlobalRuleRepository) GetByLanguage(language string) ([]*domain
 
 func (d *PostgresGlobalRuleRepository) GetAllLanguages() ([]string, error) {
 	query := `SELECT DISTINCT language FROM global_rules WHERE is_active = true ORDER BY language`
-	
+
 	rows, err := d.DB.Query(query)
 	if err != nil {
 		return nil, err
@@ -215,4 +217,42 @@ func (d *PostgresGlobalRuleRepository) Delete(language, ruleID string) error {
 	query := `DELETE FROM global_rules WHERE language = $1 AND rule_id = $2`
 	_, err := d.DB.Exec(query, language, ruleID)
 	return err
+}
+
+// GetByLanguage 言語別にプロジェクトを取得
+func (d *PostgresDatabase) GetByLanguage(language string) ([]*domain.Project, error) {
+	query := `SELECT project_id, name, description, language, apply_global_rules, access_level, created_by, created_at, updated_at 
+			  FROM projects WHERE language = $1 ORDER BY created_at DESC`
+
+	rows, err := d.DB.Query(query, language)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projects []*domain.Project
+	for rows.Next() {
+		var project domain.Project
+		err := rows.Scan(
+			&project.ProjectID,
+			&project.Name,
+			&project.Description,
+			&project.Language,
+			&project.ApplyGlobalRules,
+			&project.AccessLevel,
+			&project.CreatedBy,
+			&project.CreatedAt,
+			&project.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		projects = append(projects, &project)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return projects, nil
 }
