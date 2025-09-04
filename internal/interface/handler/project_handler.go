@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/opm008077/RuleMCPServer/internal/usecase"
@@ -43,6 +45,15 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 
 	err := h.projectUseCase.CreateProject(req.ProjectID, req.Name, req.Description, req.Language, req.ApplyGlobalRules)
 	if err != nil {
+		// 重複キーエラーの場合、ユーザーフレンドリーなメッセージを表示
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":      "このプロジェクトIDは既に使用されています。別のプロジェクトIDを指定してください。",
+				"details":    "プロジェクトIDは一意である必要があります。",
+				"suggestion": "例: " + req.ProjectID + "-v2 や " + req.ProjectID + "-" + time.Now().Format("20060102"),
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
