@@ -51,7 +51,12 @@ const RuleForm: React.FC = () => {
         navigate('/');
       }, 1500);
     } catch (error: any) {
-      setError(error.response?.data?.error || t('common.error'));
+      const errorData = error.response?.data;
+      if (errorData?.details && errorData?.suggestion) {
+        setError(`${errorData.error}\n\n詳細: ${errorData.details}\n\n提案: ${errorData.suggestion}`);
+      } else {
+        setError(errorData?.error || t('common.error'));
+      }
     } finally {
       setLoading(false);
     }
