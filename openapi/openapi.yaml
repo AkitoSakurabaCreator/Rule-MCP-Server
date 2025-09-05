@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: Rule MCP Server API
+  version: 1.0.0
+  description: |
+    ルール管理用のREST API。全てのエラーレスポンスは共通スキーマ `ErrorResponse` を使用します。
+servers:
+  - url: http://localhost:18080/api/v1
+    description: 開発環境
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      description: 共通エラーレスポンス
+      properties:
+        code:
+          type: string
+          description: エラーコード（例: validation_error, unauthorized, forbidden, not_found, conflict, unprocessable_entity, internal_error）
+        message:
+          type: string
+          description: 人間が読めるメッセージ（日本語）
+        details:
+          description: 追加情報（任意）。オブジェクトまたは配列。
+        requestId:
+          type: string
+          description: リクエスト相関ID（サーバ側ログと突き合わせ可能）
+        timestamp:
+          type: string
+          format: date-time
+          description: サーバ側の発生時刻（ISO8601）
+      required: [code, message, timestamp]
+  responses:
+    BadRequest:
+      description: 不正なリクエスト
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            example:
+              value:
+                code: validation_error
+                message: 入力値が不正です
+                details:
+                  missing: [project_id]
+                requestId: req_abc123
+                timestamp: 2025-09-05T12:34:56Z
+    Unauthorized:
+      description: 認証が必要
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            example:
+              value:
+                code: unauthorized
+                message: 認証が必要です
+                requestId: req_xyz789
+                timestamp: 2025-09-05T12:34:56Z
+    Forbidden:
+      description: 権限不足
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: 対象が見つからない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: リソース競合
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unprocessable:
+      description: 意味的に不正
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: サーバ内部エラー
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            example:
+              value:
+                code: internal_error
+                message: サーバ内部でエラーが発生しました
+                requestId: req_pqr456
+                timestamp: 2025-09-05T12:34:56Z
+paths:
+  /projects:
+    get:
+      summary: プロジェクト一覧取得
+      responses:
+        '200':
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                required: [projects]
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      summary: プロジェクト作成
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                language:
+                  type: string
+                apply_global_rules:
+                  type: boolean
+              required: [project_id, name]
+      responses:
+        '201':
+          description: 作成成功
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /rules:
+    get:
+      summary: ルール一覧取得（クエリ: project_id）
+      parameters:
+        - in: query
+          name: project_id
+          schema:
+            type: string
+          required: true
+          description: プロジェクトID
+      responses:
+        '200':
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
