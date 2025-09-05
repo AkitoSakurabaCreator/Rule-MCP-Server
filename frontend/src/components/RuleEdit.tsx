@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Rule } from '../types';
 import { api } from '../services/api';
 import { adminApi, RuleOption } from '../services/adminApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const RuleEdit: React.FC = () => {
   const [rule, setRule] = useState<Partial<Rule>>({
@@ -39,30 +40,16 @@ const RuleEdit: React.FC = () => {
   const navigate = useNavigate();
   const { projectId, ruleId } = useParams<{ projectId: string; ruleId: string }>();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const isEditMode = !!ruleId;
 
-  useEffect(() => {
-    if (isEditMode && projectId && ruleId) {
-      loadRule();
-    } else {
-      setLoading(false);
-    }
-    loadOptions();
-  }, [isEditMode, projectId, ruleId]);
-
-  // projectIdが変更された時にルールのproject_idを更新
-  useEffect(() => {
-    if (projectId) {
-      setRule(prev => ({ ...prev, project_id: projectId }));
-    }
-  }, [projectId]);
-
-  const loadRule = async () => {
+  const loadRule = useCallback(async () => {
+    if (!projectId || !ruleId) return;
     try {
       const response = await api.get(`/rules/${projectId}/${ruleId}`);
       const loadedRule = response.data;
-      // is_activeがundefinedの場合はtrueに設定
       if (loadedRule.is_active === undefined) {
         loadedRule.is_active = true;
       }
@@ -73,7 +60,23 @@ const RuleEdit: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, ruleId, t]);
+
+  useEffect(() => {
+    if (isEditMode && projectId && ruleId) {
+      loadRule();
+    } else {
+      setLoading(false);
+    }
+    loadOptions();
+  }, [isEditMode, projectId, ruleId, loadRule]);
+
+  // projectIdが変更された時にルールのproject_idを更新
+  useEffect(() => {
+    if (projectId) {
+      setRule(prev => ({ ...prev, project_id: projectId }));
+    }
+  }, [projectId]);
 
   const loadOptions = async () => {
     try {
@@ -95,7 +98,6 @@ const RuleEdit: React.FC = () => {
     setSuccess(null);
 
     try {
-      // ルールデータにproject_idを確実に設定
       const ruleData = {
         ...rule,
         project_id: projectId
@@ -132,7 +134,7 @@ const RuleEdit: React.FC = () => {
       await loadOptions();
       if (kind === 'type') setNewType(''); else setNewSeverity('');
     } catch (e) {
-      // 失敗時も特に止めない（後でToast導入余地）
+      // 失敗時も特に止めない
     }
   };
 
@@ -207,17 +209,19 @@ const RuleEdit: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                <TextField
-                  size="small"
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value)}
-                  placeholder={t('rules.addCustomType')}
-                />
-                <Button size="small" onClick={() => addOption('type', newType)}>
-                  {t('common.add')}
-                </Button>
-              </Box>
+              {isAdmin && (
+                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value)}
+                    placeholder={t('rules.addCustomType')}
+                  />
+                  <Button size="small" onClick={() => addOption('type', newType)}>
+                    {t('common.add')}
+                  </Button>
+                </Box>
+              )}
             </Grid>
 
             <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
@@ -233,17 +237,19 @@ const RuleEdit: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                <TextField
-                  size="small"
-                  value={newSeverity}
-                  onChange={(e) => setNewSeverity(e.target.value)}
-                  placeholder={t('rules.addCustomSeverity')}
-                />
-                <Button size="small" onClick={() => addOption('severity', newSeverity)}>
-                  {t('common.add')}
-                </Button>
-              </Box>
+              {isAdmin && (
+                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    value={newSeverity}
+                    onChange={(e) => setNewSeverity(e.target.value)}
+                    placeholder={t('rules.addCustomSeverity')}
+                  />
+                  <Button size="small" onClick={() => addOption('severity', newSeverity)}>
+                    {t('common.add')}
+                  </Button>
+                </Box>
+              )}
             </Grid>
 
             <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
@@ -326,14 +332,20 @@ const RuleEdit: React.FC = () => {
             </Grid>
           </Grid>
 
-          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={saving}
-            >
-              {saving ? t('common.saving') : (isEditMode ? t('common.save') : t('common.create'))}
-            </Button>
+          <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+            {isAdmin ? (
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={saving}
+              >
+                {saving ? t('common.saving') : (isEditMode ? t('common.save') : t('common.create'))}
+              </Button>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {t('common.permissionDenied') || '権限がありません'}
+              </Typography>
+            )}
             <Button
               variant="outlined"
               onClick={() => navigate(`/projects/${projectId}/rules`)}

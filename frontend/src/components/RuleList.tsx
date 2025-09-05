@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -38,14 +38,7 @@ const RuleList: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  useEffect(() => {
-    if (projectId) {
-      loadRules();
-      loadProjectInfo();
-    }
-  }, [projectId]);
-
-  const loadRules = async () => {
+  const loadRules = useCallback(async () => {
     if (!projectId) return;
     try {
       const response = await api.get(`/rules?project_id=${projectId}`);
@@ -55,9 +48,9 @@ const RuleList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
-  const loadProjectInfo = async () => {
+  const loadProjectInfo = useCallback(async () => {
     if (!projectId) return;
     try {
       const response = await api.get(`/projects`);
@@ -68,7 +61,14 @@ const RuleList: React.FC = () => {
     } catch (error) {
       console.error('Failed to load project info:', error);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId) {
+      loadRules();
+      loadProjectInfo();
+    }
+  }, [projectId, loadRules, loadProjectInfo]);
 
   const handleDelete = async () => {
     if (!projectId || !ruleToDelete) return;
