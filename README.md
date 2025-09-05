@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-AIエージェント（Cursor、Claude Desktop、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
+AIエージェント（Cursor、Claude Code、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
 
 ## 機能
 
@@ -38,29 +38,24 @@ pnpm add -g rule-mcp-server
 cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 ```
 
-#### Claude Desktop
-```json
-// ~/Library/Application Support/Claude/claude_desktop_config.json を作成
-{
-  "mcpServers": {
-    "rule-mcp-server": {
-      "command": "pnpm",
-      "args": ["dlx", "rule-mcp-server"],
-      "env": {
-        "RULE_SERVER_URL": "http://localhost:18080",
-        "MCP_API_KEY": "${MCP_API_KEY:-}"
-      },
-      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
-      "disabled": false,
-      "autoApprove": []
-    }
-  }
-}
+#### Claude Code
+```bash
+# Claude Code にMCPサーバーを追加（stdio）
+claude mcp add rule-mcp-server --env RULE_SERVER_URL=http://localhost:18080 -- pnpm dlx rule-mcp-server
+
+# APIキーを使う場合
+claude mcp add rule-mcp-server \
+  --env RULE_SERVER_URL=http://localhost:18080 \
+  --env MCP_API_KEY=your_api_key \
+  -- pnpm dlx rule-mcp-server
+
+# 参考: Anthropic公式ドキュメント
+# https://docs.anthropic.com/ja/docs/claude-code/mcp
 ```
 
 ### 3. 利用開始！
 
-AIエージェント（Cursor/Claude Desktop）を再起動して、コーディングルールを自動取得・適用できるようになります。
+AIエージェント（Cursor/Claude Code）を再起動して、コーディングルールを自動取得・適用できるようになります。
 
 **📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
 
@@ -457,7 +452,7 @@ cp config/standard-mcp-config.template.json ~/.cursor/mcp_settings.json
 #### **3. 設定ファイルの配置**
 - **Cursor**: `~/.cursor/mcp_settings.json`
 - **Cline**: `~/.cline/mcp_settings.json`
-- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Claude Code**: CLIで追加（`claude mcp add ...` を使用）
 
 #### **4. 利用可能なツール**
 標準MCPサーバーは以下のツールを提供：
