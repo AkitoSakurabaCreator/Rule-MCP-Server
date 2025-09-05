@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,9 +21,9 @@ func NewRuleHandler(ruleUseCase *usecase.RuleUseCase) *RuleHandler {
 }
 
 func (h *RuleHandler) GetRules(c *gin.Context) {
-	projectID := c.Query("project")
+	projectID := c.Query("project_id")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project parameter is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "project_id parameter is required"})
 		return
 	}
 
@@ -54,6 +55,15 @@ func (h *RuleHandler) CreateRule(c *gin.Context) {
 
 	err := h.ruleUseCase.CreateRule(req.ProjectID, req.RuleID, req.Name, req.Description, req.Type, req.Severity, req.Pattern, req.Message)
 	if err != nil {
+		// 重複キーエラーの場合、ユーザーフレンドリーなメッセージを表示
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":      "このプロジェクト内で既に同じルールIDが使用されています。別のルールIDを指定してください。",
+				"details":    "ルールIDは各プロジェクト内で一意である必要があります。",
+				"suggestion": "例: " + req.RuleID + "-v2 や " + req.RuleID + "-" + time.Now().Format("20060102"),
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

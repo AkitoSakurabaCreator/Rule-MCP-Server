@@ -24,7 +24,7 @@ func TestUsers_AdminUserEmailFormat(t *testing.T) {
 		t.Errorf("Expected admin user to have an email")
 	}
 
-	// 簡単なメール形式チェック
+	// Simple email format check
 	if len(adminUser.Email) < 5 || !contains(adminUser.Email, "@") {
 		t.Errorf("Expected valid email format, got %s", adminUser.Email)
 	}

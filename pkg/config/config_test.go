@@ -65,13 +65,13 @@ func TestLoadConfigFromEnv(t *testing.T) {
 }
 
 func TestLoadConfigInvalidPort(t *testing.T) {
-	// 無効なポート番号を設定
+	// Set invalid port number
 	os.Setenv("PORT", "invalid")
 	defer os.Unsetenv("PORT")
 
 	config := LoadConfig()
 
-	// 無効なポートの場合はデフォルト値を使用
+	// Use default value for invalid port
 	if config.Port != 8080 {
 		t.Errorf("Expected default port 8080 for invalid port, got %d", config.Port)
 	}

@@ -142,13 +142,28 @@ func main() {
 	}
 
 	// MCP プロトコルエンドポイント（データベース接続なしでも利用可能）
-	// 簡易版のMCPハンドラーを作成
-	mcpHandler := handler.NewSimpleMCPHandler()
+	if projectRepo != nil {
+		// データベースが利用可能な場合は完全版のMCPハンドラーを使用
+		ruleUseCase := usecase.NewRuleUseCase(ruleRepo, globalRuleRepo, projectRepo)
+		globalRuleUseCase := usecase.NewGlobalRuleUseCase(globalRuleRepo)
+		projectDetector := usecase.NewProjectDetector(projectRepo, ruleRepo)
 
-	mcp := r.Group("/mcp")
-	{
-		mcp.POST("/request", mcpHandler.HandleMCPRequest)
-		mcp.GET("/ws", mcpHandler.HandleWebSocket)
+		mcpHandler := handler.NewMCPHandler(ruleUseCase, globalRuleUseCase, projectDetector)
+
+		mcp := r.Group("/mcp")
+		{
+			mcp.POST("/request", mcpHandler.HandleMCPRequest)
+			mcp.GET("/ws", mcpHandler.HandleWebSocket)
+		}
+	} else {
+		// データベースが利用できない場合は簡易版のMCPハンドラーを使用
+		simpleMCPHandler := handler.NewSimpleMCPHandler()
+
+		mcp := r.Group("/mcp")
+		{
+			mcp.POST("/request", simpleMCPHandler.HandleMCPRequest)
+			mcp.GET("/ws", simpleMCPHandler.HandleWebSocket)
+		}
 	}
 
 	log.Printf("Rule MCP Server starting on %s", cfg.GetAddress())
