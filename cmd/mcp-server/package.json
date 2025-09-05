@@ -1,0 +1,40 @@
+{
+  "name": "rule-mcp-server",
+  "version": "1.0.0",
+  "description": "Rule MCP Server for AI agents to retrieve and apply coding rules",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "rule-mcp-server": "./build/index.js"
+  },
+  "files": [
+    "build/",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "start": "node build/index.js",
+    "dev": "tsc && node build/index.js",
+    "clean": "rm -rf build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "coding-rules",
+    "cursor",
+    "cline"
+  ],
+  "license": "MIT"
+}

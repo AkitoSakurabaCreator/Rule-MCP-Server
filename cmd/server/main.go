@@ -97,7 +97,12 @@ func main() {
 	{
 		admin.GET("/stats", adminHandler.GetStats)
 		admin.GET("/users", adminHandler.GetUsers)
+		admin.POST("/users", adminHandler.CreateUser)
+		admin.PUT("/users/:id", adminHandler.UpdateUser)
+		admin.DELETE("/users/:id", adminHandler.DeleteUser)
 		admin.GET("/api-keys", adminHandler.GetApiKeys)
+		admin.POST("/api-keys", adminHandler.GenerateApiKey)
+		admin.DELETE("/api-keys/:id", adminHandler.DeleteApiKey)
 		admin.GET("/mcp-stats", adminHandler.GetMcpStats)
 		admin.GET("/system-logs", adminHandler.GetSystemLogs)
 	}
