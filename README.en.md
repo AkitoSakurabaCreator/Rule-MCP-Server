@@ -727,14 +727,15 @@ MIT License - See [LICENSE](LICENSE) file for details.
 ### Documentation
 
 - **📚 Detailed Documentation**: [GitHub Wiki](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/wiki)
-- **🎥 Tutorials**: [YouTube Playlist](https://youtube.com/playlist?list=...)
-- **📖 API Reference**: [API Docs](https://api-docs.rulemcp.com)
 
 ### Community
 
-- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/...)
-- **🐦 Twitter**: [@RuleMCPServer](https://twitter.com/RuleMCPServer)
-- **📧 Mailing List**: [Google Groups](https://groups.google.com/g/rule-mcp-server)
+- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/dCAUC8m6dw)
+- **🐦 X (formerly Twitter)**: [@_sakuraba_akito](https://x.com/_sakuraba_akito)
+
+### Project Support
+
+- **💖 Sponsor**: [GitHub Sponsors](https://github.com/sponsors/AkitoSakurabaCreator)
 
 ---
 
