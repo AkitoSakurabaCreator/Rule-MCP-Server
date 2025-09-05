@@ -13,11 +13,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../services/api';
 import { adminApi, RuleOption } from '../services/adminApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const RuleForm: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -151,8 +154,12 @@ const RuleForm: React.FC = () => {
                 <MenuItem key={v} value={v}>{v}</MenuItem>
               ))}
             </TextField>
-            <TextField size="small" value={newType} onChange={(e) => setNewType(e.target.value)} placeholder={t('rules.addCustomType')} />
-            <Button size="small" onClick={() => addOption('type', newType)}>{t('common.add')}</Button>
+            {isAdmin && (
+              <>
+                <TextField size="small" value={newType} onChange={(e) => setNewType(e.target.value)} placeholder={t('rules.addCustomType')} />
+                <Button size="small" onClick={() => addOption('type', newType)}>{t('common.add')}</Button>
+              </>
+            )}
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -169,8 +176,12 @@ const RuleForm: React.FC = () => {
                 <MenuItem key={v} value={v}>{v}</MenuItem>
               ))}
             </TextField>
-            <TextField size="small" value={newSeverity} onChange={(e) => setNewSeverity(e.target.value)} placeholder={t('rules.addCustomSeverity')} />
-            <Button size="small" onClick={() => addOption('severity', newSeverity)}>{t('common.add')}</Button>
+            {isAdmin && (
+              <>
+                <TextField size="small" value={newSeverity} onChange={(e) => setNewSeverity(e.target.value)} placeholder={t('rules.addCustomSeverity')} />
+                <Button size="small" onClick={() => addOption('severity', newSeverity)}>{t('common.add')}</Button>
+              </>
+            )}
           </Box>
 
           <TextField
@@ -189,7 +200,7 @@ const RuleForm: React.FC = () => {
             helperText={t('rules.messageHelp')}
           />
 
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', alignItems: 'center' }}>
             <Button
               variant="outlined"
               onClick={() => navigate(`/projects/${projectId}/rules`)}
@@ -197,13 +208,19 @@ const RuleForm: React.FC = () => {
             >
               {t('common.cancel')}
             </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading}
-            >
-              {loading ? t('common.loading') : t('common.add')}
-            </Button>
+            {isAdmin ? (
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={loading}
+              >
+                {loading ? t('common.loading') : t('common.add')}
+              </Button>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                権限がありません
+              </Typography>
+            )}
           </Box>
         </Box>
       </CardContent>
