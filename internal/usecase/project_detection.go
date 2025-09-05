@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opm008077/RuleMCPServer/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 )
 
 // ProjectDetector プロジェクト自動検出ユースケース
