@@ -50,6 +50,14 @@ export interface RuleOption {
   is_active: boolean;
 }
 
+export interface Role {
+  id?: number;
+  name: string;
+  description?: string;
+  permissions?: Record<string, boolean>;
+  is_active?: boolean;
+}
+
 // 管理者用APIサービス
 export const adminApi = {
   // 統計データ取得
@@ -113,7 +121,6 @@ export const adminApi = {
   // ルールオプション取得
   getRuleOptions: async (kind: 'type' | 'severity'): Promise<RuleOption[]> => {
     const response = await api.get(`/admin/rule-options`, { params: { kind } });
-    // backend returns { options: [...] }
     return response.data.options as RuleOption[];
   },
 
@@ -125,5 +132,20 @@ export const adminApi = {
   // ルールオプション削除（admin権限が必要）
   deleteRuleOption: async (kind: 'type' | 'severity', value: string): Promise<void> => {
     await api.delete(`/admin/rule-options`, { data: { kind, value } });
+  },
+
+  // ロール管理
+  getRoles: async (): Promise<Role[]> => {
+    const response = await api.get('/admin/roles');
+    return response.data as Role[];
+  },
+  createRole: async (role: Role): Promise<void> => {
+    await api.post('/admin/roles', role);
+  },
+  updateRole: async (name: string, role: Partial<Role>): Promise<void> => {
+    await api.put(`/admin/roles/${encodeURIComponent(name)}`, role);
+  },
+  deleteRole: async (name: string): Promise<void> => {
+    await api.delete(`/admin/roles/${encodeURIComponent(name)}`);
   },
 };
