@@ -1299,14 +1299,15 @@ MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してくださ�
 ### ドキュメント
 
 - **📚 詳細ドキュメント**: [GitHub Wiki](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/wiki)
-- **🎥 チュートリアル**: [YouTube Playlist](https://youtube.com/playlist?list=...)
-- **📖 API リファレンス**: [API Docs](https://api-docs.rulemcp.com)
 
 ### コミュニティ
 
-- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/...)
-- **🐦 Twitter**: [@RuleMCPServer](https://twitter.com/RuleMCPServer)
-- **📧 メーリングリスト**: [Google Groups](https://groups.google.com/g/rule-mcp-server)
+- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/dCAUC8m6dw)
+- **🐦 X (旧Twitter)**: [@_sakuraba_akito](https://x.com/_sakuraba_akito)
+
+### プロジェクト支援
+
+- **💖 スポンサー**: [GitHub Sponsors](https://github.com/sponsors/AkitoSakurabaCreator)
 
 ---
 
