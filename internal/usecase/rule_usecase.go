@@ -1,10 +1,10 @@
 package usecase
 
 import (
-	"errors"
 	"regexp"
 
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/apperr"
 )
 
 type RuleUseCase struct {
@@ -23,7 +23,17 @@ func NewRuleUseCase(ruleRepo domain.RuleRepository, globalRuleRepo domain.Global
 
 func (uc *RuleUseCase) CreateRule(projectID, ruleID, name, description, ruleType, severity, pattern, message string) error {
 	if projectID == "" || ruleID == "" || name == "" {
-		return errors.New("project_id, rule_id, and name are required")
+		missing := []string{}
+		if projectID == "" {
+			missing = append(missing, "project_id")
+		}
+		if ruleID == "" {
+			missing = append(missing, "rule_id")
+		}
+		if name == "" {
+			missing = append(missing, "name")
+		}
+		return apperr.WrapWithDetails(apperr.ErrValidation, "入力値が不正です", map[string]interface{}{"missing": missing})
 	}
 
 	rule := &domain.Rule{
@@ -39,6 +49,39 @@ func (uc *RuleUseCase) CreateRule(projectID, ruleID, name, description, ruleType
 	}
 
 	return uc.ruleRepo.Create(rule)
+}
+
+func (uc *RuleUseCase) GetRule(projectID, ruleID string) (*domain.Rule, error) {
+	if projectID == "" || ruleID == "" {
+		return nil, apperr.WrapWithDetails(apperr.ErrValidation, "入力値が不正です", map[string]interface{}{"missing": []string{"project_id", "rule_id"}})
+	}
+	return uc.ruleRepo.GetByID(projectID, ruleID)
+}
+
+func (uc *RuleUseCase) UpdateRule(projectID, ruleID, name, description, ruleType, severity, pattern, message string, isActive *bool) error {
+	if projectID == "" || ruleID == "" {
+		return apperr.WrapWithDetails(apperr.ErrValidation, "入力値が不正です", map[string]interface{}{"missing": []string{"project_id", "rule_id"}})
+	}
+	existing, err := uc.ruleRepo.GetByID(projectID, ruleID)
+	if err != nil {
+		return err
+	}
+	if name != "" {
+		existing.Name = name
+	}
+	existing.Description = description
+	if ruleType != "" {
+		existing.Type = ruleType
+	}
+	if severity != "" {
+		existing.Severity = severity
+	}
+	existing.Pattern = pattern
+	existing.Message = message
+	if isActive != nil {
+		existing.IsActive = *isActive
+	}
+	return uc.ruleRepo.Update(existing)
 }
 
 func (uc *RuleUseCase) GetProjectRules(projectID string) (*domain.ProjectRules, error) {
@@ -106,6 +149,9 @@ func (uc *RuleUseCase) ValidateCode(projectID, code string) (*domain.ValidationR
 		if !rule.IsActive {
 			continue
 		}
+		if rule.Pattern == "" {
+			continue
+		}
 
 		matched, err := regexp.MatchString(rule.Pattern, code)
 		if err != nil {
@@ -113,11 +159,19 @@ func (uc *RuleUseCase) ValidateCode(projectID, code string) (*domain.ValidationR
 		}
 
 		if matched {
+			msg := rule.Message
+			if msg == "" {
+				if rule.Name != "" {
+					msg = rule.Name
+				} else {
+					msg = rule.Description
+				}
+			}
 			if rule.Severity == "error" {
-				result.Errors = append(result.Errors, rule.Message)
+				result.Errors = append(result.Errors, msg)
 				result.Valid = false
 			} else if rule.Severity == "warning" {
-				result.Warnings = append(result.Warnings, rule.Message)
+				result.Warnings = append(result.Warnings, msg)
 			}
 		}
 	}
