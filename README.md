@@ -1,5 +1,8 @@
 # Rule MCP Server
 
+[![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 AIエージェント（Cursor、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
 
 ## 機能
@@ -270,6 +273,8 @@ pnpm add -g rule-mcp-server
 # またはpnpm dlx経由（インストール不要）
 pnpm dlx rule-mcp-server
 ```
+
+**📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server) として公開済み
 
 ##### **開発版ビルド**
 ```bash
@@ -1053,7 +1058,7 @@ curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
 ### pnpmパッケージ使用（推奨）
 
 ```bash
-# 1. MCPサーバーをインストール
+# 1. MCPサーバーをインストール（またはpnpm dlxで自動インストール）
 pnpm add -g rule-mcp-server
 
 # 2. 設定ファイルを作成
@@ -1061,6 +1066,8 @@ cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 
 # 3. AIエージェント（Cursor/Cline）で利用開始！
 ```
+
+**📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server) として公開済み
 
 ### Docker環境
 
