@@ -1,6 +1,6 @@
 {
   "name": "rule-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Rule MCP Server for AI agents to retrieve and apply coding rules",
   "type": "module",
   "main": "build/index.js",
