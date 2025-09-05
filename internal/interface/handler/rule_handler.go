@@ -5,9 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/domain"
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/usecase"
 )
 
 type RuleHandler struct {
@@ -23,13 +24,13 @@ func NewRuleHandler(ruleUseCase *usecase.RuleUseCase) *RuleHandler {
 func (h *RuleHandler) GetRules(c *gin.Context) {
 	projectID := c.Query("project_id")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project_id parameter is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "project_id parameter is required", nil)
 		return
 	}
 
 	rules, err := h.ruleUseCase.GetProjectRules(projectID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -49,26 +50,81 @@ func (h *RuleHandler) CreateRule(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		return
+	}
+
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
 	err := h.ruleUseCase.CreateRule(req.ProjectID, req.RuleID, req.Name, req.Description, req.Type, req.Severity, req.Pattern, req.Message)
 	if err != nil {
-		// 重複キーエラーの場合、ユーザーフレンドリーなメッセージを表示
-		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			c.JSON(http.StatusConflict, gin.H{
-				"error":      "このプロジェクト内で既に同じルールIDが使用されています。別のルールIDを指定してください。",
-				"details":    "ルールIDは各プロジェクト内で一意である必要があります。",
-				"suggestion": "例: " + req.RuleID + "-v2 や " + req.RuleID + "-" + time.Now().Format("20060102"),
-			})
+		if strings.Contains(err.Error(), "一意制約") {
+			httpx.JSONError(c, http.StatusConflict, httpx.CodeConflict, "このプロジェクト内で既に同じルールIDが使用されています。別のルールIDを指定してください。", map[string]string{"rule_id": req.RuleID})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Rule created successfully"})
+}
+
+// GetRule 単一ルール取得
+func (h *RuleHandler) GetRule(c *gin.Context) {
+	projectID := c.Param("project_id")
+	ruleID := c.Param("rule_id")
+	if projectID == "" || ruleID == "" {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "project_id and rule_id are required", nil)
+		return
+	}
+	rule, err := h.ruleUseCase.GetRule(projectID, ruleID)
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, rule)
+}
+
+// UpdateRule ルール更新
+func (h *RuleHandler) UpdateRule(c *gin.Context) {
+	projectID := c.Param("project_id")
+	ruleID := c.Param("rule_id")
+	if projectID == "" || ruleID == "" {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "project_id and rule_id are required", nil)
+		return
+	}
+	// 権限制御（admin のみ）
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		return
+	}
+
+	var req struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Type        string `json:"type"`
+		Severity    string `json:"severity"`
+		Pattern     string `json:"pattern"`
+		Message     string `json:"message"`
+		IsActive    *bool  `json:"is_active"`
+		ProjectID   string `json:"project_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		return
+	}
+	if req.ProjectID != "" {
+		projectID = req.ProjectID
+	}
+
+	if err := h.ruleUseCase.UpdateRule(projectID, ruleID, req.Name, req.Description, req.Type, req.Severity, req.Pattern, req.Message, req.IsActive); err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Rule updated successfully"})
 }
 
 func (h *RuleHandler) DeleteRule(c *gin.Context) {
@@ -76,13 +132,19 @@ func (h *RuleHandler) DeleteRule(c *gin.Context) {
 	ruleID := c.Param("rule_id")
 
 	if projectID == "" || ruleID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project_id and rule_id are required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "project_id and rule_id are required", nil)
+		return
+	}
+
+	// 権限制御（admin のみ）
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
 	err := h.ruleUseCase.DeleteRule(projectID, ruleID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -96,13 +158,13 @@ func (h *RuleHandler) ValidateCode(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
 		return
 	}
 
 	result, err := h.ruleUseCase.ValidateCode(req.ProjectID, req.Code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -127,14 +189,14 @@ type ImportRulesRequest struct {
 func (h *RuleHandler) ExportRules(c *gin.Context) {
 	var req ExportRulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", nil)
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
@@ -209,14 +271,14 @@ func (h *RuleHandler) ExportRules(c *gin.Context) {
 func (h *RuleHandler) ImportRules(c *gin.Context) {
 	var req ImportRulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", nil)
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 

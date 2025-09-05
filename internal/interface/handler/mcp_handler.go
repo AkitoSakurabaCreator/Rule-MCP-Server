@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/mcpx"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/domain"
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/usecase"
 )
 
 type MCPHandler struct {
@@ -28,7 +29,7 @@ func NewMCPHandler(ruleUseCase *usecase.RuleUseCase, globalRuleUseCase *usecase.
 func (h *MCPHandler) HandleMCPRequest(c *gin.Context) {
 	var req domain.MCPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid request format")
+		h.sendMCPError(c, "", mcpx.CodeValidation, "Invalid request format")
 		return
 	}
 
@@ -46,7 +47,7 @@ func (h *MCPHandler) HandleMCPRequest(c *gin.Context) {
 	case "scanLocalProjects":
 		h.handleScanLocalProjects(c, req)
 	default:
-		h.sendMCPError(c, req.ID, 404, "Method not found: "+req.Method)
+		h.sendMCPError(c, req.ID, mcpx.CodeNotFound, "Method not found: "+req.Method)
 	}
 }
 
@@ -143,19 +144,20 @@ func (h *MCPHandler) handleToolsList(c *gin.Context, req domain.MCPRequest) {
 func (h *MCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest) {
 	var params domain.MCPRuleRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
 	if params.ProjectID == "" {
-		h.sendMCPError(c, req.ID, 400, "Project ID is required")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Project ID is required")
 		return
 	}
 
 	// Get project rules
 	projectRules, err := h.ruleUseCase.GetProjectRules(params.ProjectID)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to get project rules: "+err.Error())
+		code, msg := mcpx.MapAppErrorToMCP(err)
+		h.sendMCPError(c, req.ID, code, "Failed to get project rules: "+msg)
 		return
 	}
 
@@ -163,10 +165,7 @@ func (h *MCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest) {
 	var globalRules []domain.GlobalRule
 	if params.Language != "" {
 		globalRulesPtr, err := h.globalRuleUseCase.GetGlobalRules(params.Language)
-		if err != nil {
-			// Log error but continue without global rules
-			c.Error(err)
-		} else {
+		if err == nil {
 			// Convert pointer slice to value slice
 			globalRules = make([]domain.GlobalRule, len(globalRulesPtr))
 			for i, gr := range globalRulesPtr {
@@ -209,19 +208,20 @@ func (h *MCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest) {
 func (h *MCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequest) {
 	var params domain.MCPValidationRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
 	if params.ProjectID == "" || params.Code == "" {
-		h.sendMCPError(c, req.ID, 400, "Project ID and code are required")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Project ID and code are required")
 		return
 	}
 
 	// Validate code against project rules
 	validationResult, err := h.ruleUseCase.ValidateCode(params.ProjectID, params.Code)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to validate code: "+err.Error())
+		code, msg := mcpx.MapAppErrorToMCP(err)
+		h.sendMCPError(c, req.ID, code, "Failed to validate code: "+msg)
 		return
 	}
 
@@ -253,7 +253,6 @@ func (h *MCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequest) {
 	// Get applied rules for context
 	projectRules, err := h.ruleUseCase.GetProjectRules(params.ProjectID)
 	if err != nil {
-		c.Error(err)
 		projectRules = &domain.ProjectRules{Rules: []domain.Rule{}}
 	}
 
@@ -272,18 +271,18 @@ func (h *MCPHandler) handleGetProjectInfo(c *gin.Context, req domain.MCPRequest)
 		ProjectID string `json:"project_id"`
 	}
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
 	if params.ProjectID == "" {
-		h.sendMCPError(c, req.ID, 400, "Project ID is required")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Project ID is required")
 		return
 	}
 
 	// Get project information - this method needs to be implemented in usecase
 	// For now, return an error
-	h.sendMCPError(c, req.ID, 501, "getProjectInfo not yet implemented")
+	h.sendMCPError(c, req.ID, mcpx.CodeInternal, "getProjectInfo not yet implemented")
 }
 
 // handleAutoDetectProject handles the autoDetectProject MCP method
@@ -293,26 +292,27 @@ func (h *MCPHandler) handleAutoDetectProject(c *gin.Context, req domain.MCPReque
 	}
 
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
 	if params.Path == "" {
-		h.sendMCPError(c, req.ID, 400, "Path is required")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Path is required")
 		return
 	}
 
 	// Auto-detect project
 	result, err := h.projectDetector.AutoDetectProject(params.Path)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 404, "Project not found: "+err.Error())
+		code, msg := mcpx.MapAppErrorToMCP(err)
+		h.sendMCPError(c, req.ID, code, "Project not found: "+msg)
 		return
 	}
 
 	// Convert result to JSON
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to serialize result")
+		h.sendMCPError(c, req.ID, mcpx.CodeInternal, "Failed to serialize result")
 		return
 	}
 
@@ -331,7 +331,7 @@ func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPReque
 	}
 
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
@@ -342,7 +342,8 @@ func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPReque
 	// Scan local projects
 	results, err := h.projectDetector.ScanLocalProjects(params.BasePath)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to scan local projects: "+err.Error())
+		code, msg := mcpx.MapAppErrorToMCP(err)
+		h.sendMCPError(c, req.ID, code, "Failed to scan local projects: "+msg)
 		return
 	}
 
@@ -354,7 +355,7 @@ func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPReque
 
 	responseJSON, err := json.Marshal(responseData)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to serialize results")
+		h.sendMCPError(c, req.ID, mcpx.CodeInternal, "Failed to serialize results")
 		return
 	}
 
@@ -370,7 +371,7 @@ func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPReque
 func (h *MCPHandler) sendMCPResponse(c *gin.Context, id string, result interface{}) {
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
-		h.sendMCPError(c, id, 500, "Failed to marshal response")
+		h.sendMCPError(c, id, mcpx.CodeInternal, "Failed to marshal response")
 		return
 	}
 

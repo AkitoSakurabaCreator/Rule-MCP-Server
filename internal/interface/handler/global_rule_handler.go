@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/domain"
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/usecase"
 )
 
 type GlobalRuleHandler struct {
@@ -22,13 +23,13 @@ func NewGlobalRuleHandler(globalRuleUseCase *usecase.GlobalRuleUseCase) *GlobalR
 func (h *GlobalRuleHandler) GetGlobalRules(c *gin.Context) {
 	language := c.Param("language")
 	if language == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "language parameter is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "language parameter is required", nil)
 		return
 	}
 
 	rules, err := h.globalRuleUseCase.GetGlobalRules(language)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -48,13 +49,13 @@ func (h *GlobalRuleHandler) CreateGlobalRule(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
 		return
 	}
 
 	err := h.globalRuleUseCase.CreateGlobalRule(req.Language, req.RuleID, req.Name, req.Description, req.Type, req.Severity, req.Pattern, req.Message)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -66,13 +67,13 @@ func (h *GlobalRuleHandler) DeleteGlobalRule(c *gin.Context) {
 	ruleID := c.Param("rule_id")
 
 	if language == "" || ruleID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "language and rule_id are required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "language and rule_id are required", nil)
 		return
 	}
 
 	err := h.globalRuleUseCase.DeleteGlobalRule(language, ruleID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -82,7 +83,7 @@ func (h *GlobalRuleHandler) DeleteGlobalRule(c *gin.Context) {
 func (h *GlobalRuleHandler) GetLanguages(c *gin.Context) {
 	languages, err := h.globalRuleUseCase.GetAllLanguages()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -107,14 +108,14 @@ type ImportGlobalRulesRequest struct {
 func (h *GlobalRuleHandler) ExportGlobalRules(c *gin.Context) {
 	var req ExportGlobalRulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", nil)
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
@@ -186,14 +187,14 @@ func (h *GlobalRuleHandler) ExportGlobalRules(c *gin.Context) {
 func (h *GlobalRuleHandler) ImportGlobalRules(c *gin.Context) {
 	var req ImportGlobalRulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", nil)
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
@@ -271,27 +272,27 @@ type UpdateLanguageRequest struct {
 func (h *GlobalRuleHandler) CreateLanguage(c *gin.Context) {
 	var req CreateLanguageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", err.Error())
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
 	// 言語コードの重複チェック
 	existingLanguages, err := h.globalRuleUseCase.GetAllLanguages()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing languages"})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
 	for _, lang := range existingLanguages {
 		if lang == req.Code {
-			c.JSON(http.StatusConflict, gin.H{"error": "Language code already exists"})
+			httpx.JSONError(c, http.StatusConflict, httpx.CodeConflict, "Language code already exists", nil)
 			return
 		}
 	}
@@ -318,20 +319,20 @@ func (h *GlobalRuleHandler) CreateLanguage(c *gin.Context) {
 func (h *GlobalRuleHandler) UpdateLanguage(c *gin.Context) {
 	languageCode := c.Param("code")
 	if languageCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Language code is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Language code is required", nil)
 		return
 	}
 
 	var req UpdateLanguageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", err.Error())
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
@@ -360,14 +361,14 @@ func (h *GlobalRuleHandler) UpdateLanguage(c *gin.Context) {
 func (h *GlobalRuleHandler) DeleteLanguage(c *gin.Context) {
 	languageCode := c.Param("code")
 	if languageCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Language code is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Language code is required", nil)
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
@@ -384,7 +385,7 @@ func (h *GlobalRuleHandler) DeleteLanguage(c *gin.Context) {
 func (h *GlobalRuleHandler) GetLanguageInfo(c *gin.Context) {
 	languageCode := c.Param("code")
 	if languageCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Language code is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Language code is required", nil)
 		return
 	}
 
