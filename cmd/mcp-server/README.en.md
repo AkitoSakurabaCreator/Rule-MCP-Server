@@ -23,7 +23,7 @@ pnpm dlx rule-mcp-server
 
 ## Usage
 
-### Cursor / Claude Desktop Configuration
+### Cursor / Claude Code Configuration
 
 Add the following to `~/.cursor/mcp.json`:
 
@@ -45,25 +45,20 @@ Add the following to `~/.cursor/mcp.json`:
 }
 ```
 
-#### Claude Desktop
+#### Claude Code
 
-```json
-// ~/Library/Application Support/Claude/claude_desktop_config.json
-{
-  "mcpServers": {
-    "rule-mcp-server": {
-      "command": "pnpm",
-      "args": ["dlx", "rule-mcp-server"],
-      "env": {
-        "RULE_SERVER_URL": "http://localhost:18080",
-        "MCP_API_KEY": ""
-      },
-      "description": "Standard MCP Server for Rule Management",
-      "disabled": false,
-      "autoApprove": []
-    }
-  }
-}
+```bash
+# Add MCP server to Claude Code (stdio)
+claude mcp add rule-mcp-server --env RULE_SERVER_URL=http://localhost:18080 -- pnpm dlx rule-mcp-server
+
+# With API key
+claude mcp add rule-mcp-server \
+  --env RULE_SERVER_URL=http://localhost:18080 \
+  --env MCP_API_KEY=your_api_key \
+  -- pnpm dlx rule-mcp-server
+
+# Reference: Anthropic official docs
+# https://docs.anthropic.com/ja/docs/claude-code/mcp
 ```
 
 ### Environment Variables
