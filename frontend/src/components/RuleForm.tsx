@@ -12,6 +12,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../services/api';
+import { adminApi, RuleOption } from '../services/adminApi';
 
 const RuleForm: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -32,11 +33,30 @@ const RuleForm: React.FC = () => {
     message: '',
   });
 
+  const [typeOptions, setTypeOptions] = useState<string[]>([]);
+  const [severityOptions, setSeverityOptions] = useState<string[]>([]);
+  const [newType, setNewType] = useState('');
+  const [newSeverity, setNewSeverity] = useState('');
+
   useEffect(() => {
     if (projectId) {
       setFormData(prev => ({ ...prev, project_id: projectId }));
     }
+    loadOptions();
   }, [projectId]);
+
+  const loadOptions = async () => {
+    try {
+      const [types, severities] = await Promise.all([
+        adminApi.getRuleOptions('type'),
+        adminApi.getRuleOptions('severity'),
+      ]);
+      setTypeOptions(types.map((o: RuleOption) => o.value));
+      setSeverityOptions(severities.map((o: RuleOption) => o.value));
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +68,7 @@ const RuleForm: React.FC = () => {
       await api.post('/rules', formData);
       setSuccess(t('rules.createSuccess'));
       setTimeout(() => {
-        navigate('/');
+        navigate(`/projects/${projectId}/rules`);
       }, 1500);
     } catch (error: any) {
       const errorData = error.response?.data;
@@ -67,6 +87,18 @@ const RuleForm: React.FC = () => {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const addOption = async (kind: 'type' | 'severity', value: string) => {
+    const v = (value || '').trim();
+    if (!v) return;
+    try {
+      await adminApi.addRuleOption(kind, v);
+      await loadOptions();
+      if (kind === 'type') setNewType(''); else setNewSeverity('');
+    } catch (e) {
+      // ignore
+    }
   };
 
   return (
@@ -105,41 +137,46 @@ const RuleForm: React.FC = () => {
             helperText={t('rules.descriptionHelp')}
           />
 
-          <TextField
-            select
-            label={t('rules.type')}
-            value={formData.type}
-            onChange={(e) => handleChange('type', e.target.value)}
-            required
-            helperText={t('rules.typeHelp')}
-          >
-            {Object.entries(t('types', { returnObjects: true })).map(([key, value]) => (
-              <MenuItem key={key} value={key}>
-                {value as string}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField
+              select
+              label={t('rules.type')}
+              value={formData.type}
+              onChange={(e) => handleChange('type', e.target.value)}
+              required
+              helperText={t('rules.typeHelp')}
+              sx={{ flex: 1 }}
+            >
+              {typeOptions.map((v) => (
+                <MenuItem key={v} value={v}>{v}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" value={newType} onChange={(e) => setNewType(e.target.value)} placeholder={t('rules.addCustomType')} />
+            <Button size="small" onClick={() => addOption('type', newType)}>{t('common.add')}</Button>
+          </Box>
 
-          <TextField
-            select
-            label={t('rules.severity')}
-            value={formData.severity}
-            onChange={(e) => handleChange('severity', e.target.value)}
-            required
-            helperText={t('rules.severityHelp')}
-          >
-            {Object.entries(t('severity', { returnObjects: true })).map(([key, value]) => (
-              <MenuItem key={key} value={key}>
-                {value as string}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField
+              select
+              label={t('rules.severity')}
+              value={formData.severity}
+              onChange={(e) => handleChange('severity', e.target.value)}
+              required
+              helperText={t('rules.severityHelp')}
+              sx={{ flex: 1 }}
+            >
+              {severityOptions.map((v) => (
+                <MenuItem key={v} value={v}>{v}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" value={newSeverity} onChange={(e) => setNewSeverity(e.target.value)} placeholder={t('rules.addCustomSeverity')} />
+            <Button size="small" onClick={() => addOption('severity', newSeverity)}>{t('common.add')}</Button>
+          </Box>
 
           <TextField
             label={t('rules.pattern')}
             value={formData.pattern}
             onChange={(e) => handleChange('pattern', e.target.value)}
-            required
             helperText={t('rules.patternHelp')}
           />
 
@@ -147,7 +184,6 @@ const RuleForm: React.FC = () => {
             label={t('rules.message')}
             value={formData.message}
             onChange={(e) => handleChange('message', e.target.value)}
-            required
             multiline
             rows={2}
             helperText={t('rules.messageHelp')}
@@ -156,7 +192,7 @@ const RuleForm: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
-              onClick={() => navigate('/')}
+              onClick={() => navigate(`/projects/${projectId}/rules`)}
               disabled={loading}
             >
               {t('common.cancel')}

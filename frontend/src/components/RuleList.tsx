@@ -24,6 +24,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Rule } from '../types';
 import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const RuleList: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>([]);
@@ -34,6 +35,8 @@ const RuleList: React.FC = () => {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     if (projectId) {
@@ -44,13 +47,9 @@ const RuleList: React.FC = () => {
 
   const loadRules = async () => {
     if (!projectId) return;
-    
     try {
-      console.log('Loading rules for project:', projectId);
       const response = await api.get(`/rules?project_id=${projectId}`);
-      console.log('API Response:', response.data);
       setRules(response.data.rules || []);
-      console.log('Rules set:', response.data.rules || []);
     } catch (error) {
       console.error('Failed to load rules:', error);
     } finally {
@@ -60,7 +59,6 @@ const RuleList: React.FC = () => {
 
   const loadProjectInfo = async () => {
     if (!projectId) return;
-    
     try {
       const response = await api.get(`/projects`);
       const project = response.data.projects.find((p: any) => p.project_id === projectId);
@@ -74,7 +72,6 @@ const RuleList: React.FC = () => {
 
   const handleDelete = async () => {
     if (!projectId || !ruleToDelete) return;
-
     try {
       await api.delete(`/rules/${projectId}/${ruleToDelete}`);
       await loadRules();
@@ -133,13 +130,15 @@ const RuleList: React.FC = () => {
             {t('rules.projectRules')}: {projectId}
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate(`/projects/${projectId}/rules/new`)}
-        >
-          {t('rules.newRule')}
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate(`/projects/${projectId}/rules/new`)}
+          >
+            {t('rules.newRule')}
+          </Button>
+        )}
       </Box>
 
       {rules.length === 0 ? (
@@ -164,7 +163,7 @@ const RuleList: React.FC = () => {
                 <TableCell>{t('rules.severity')}</TableCell>
                 <TableCell>{t('rules.pattern')}</TableCell>
                 <TableCell>{t('rules.status')}</TableCell>
-                <TableCell>{t('common.actions')}</TableCell>
+                {isAdmin && <TableCell>{t('common.actions')}</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -209,23 +208,25 @@ const RuleList: React.FC = () => {
                       size="small"
                     />
                   </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <IconButton
-                        size="small"
-                        onClick={() => navigate(`/projects/${projectId}/rules/${rule.rule_id}/edit`)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => openDeleteDialog(rule.rule_id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
+                  {isAdmin && (
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => navigate(`/projects/${projectId}/rules/${rule.rule_id}/edit`)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => openDeleteDialog(rule.rule_id)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
