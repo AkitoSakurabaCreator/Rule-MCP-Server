@@ -1,6 +1,11 @@
 # Rule MCP Server
 
+[![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A MCP (Model Context Protocol) server that allows AI agents (Cursor, Cline) to retrieve and apply common coding rules.
+
+**📦 npm package**: Published as [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
 
 ## Installation
 
