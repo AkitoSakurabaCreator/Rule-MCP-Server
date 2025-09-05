@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A MCP (Model Context Protocol) server that allows AI agents (Cursor, Cline) to retrieve and apply common coding rules.
+A MCP (Model Context Protocol) server that allows AI agents (Cursor, Claude Desktop, Cline) to retrieve and apply common coding rules.
 
 ## Features
 
@@ -17,6 +17,38 @@ A MCP (Model Context Protocol) server that allows AI agents (Cursor, Cline) to r
 - **Multi-language support (i18n)**: English, Japanese, Chinese, Hindi, Spanish, Arabic
 - **Dark theme support**: Light/Dark mode toggle
 - **Clean Architecture** for high maintainability
+
+## 🚀 Quick Start
+
+### 1. Install MCP Server
+
+```bash
+# Via pnpm dlx (recommended, no installation required)
+pnpm dlx rule-mcp-server
+
+# Or global installation
+pnpm add -g rule-mcp-server
+```
+
+### 2. Configure AI Agent
+
+#### Cursor
+```bash
+# Copy configuration template
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
+```
+
+#### Claude Desktop
+```bash
+# Copy configuration template
+cp config/claude-desktop-mcp-config.template.json ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+### 3. Start Using!
+
+Restart your AI agent (Cursor/Claude Desktop) and it will automatically retrieve and apply coding rules.
+
+**📦 npm package**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
 
 ## Tech Stack
 
