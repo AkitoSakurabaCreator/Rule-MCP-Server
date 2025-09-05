@@ -39,9 +39,23 @@ cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 ```
 
 #### Claude Desktop
-```bash
-# Copy configuration template
-cp config/claude-desktop-mcp-config.template.json ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```json
+// Create ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": ["dlx", "rule-mcp-server"],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
 ```
 
 ### 3. Start Using!
@@ -49,6 +63,48 @@ cp config/claude-desktop-mcp-config.template.json ~/Library/Application\ Support
 Restart your AI agent (Cursor/Claude Desktop) and it will automatically retrieve and apply coding rules.
 
 **📦 npm package**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
+
+Note: `MCP_API_KEY` is optional (Public access works without it). Set it only for team operations or when using management APIs.
+
+### Server Requirement and Startup (Important)
+
+The MCP client configuration assumes the backend Rule MCP Server is running.
+
+#### Health Check
+```bash
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} means the server is running
+```
+
+#### If the server is not running (Local via Docker)
+```bash
+# Get the repository
+git clone https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git
+cd Rule-MCP-Server
+
+# Start with Docker (recommended)
+docker compose up -d
+
+# Stop
+docker compose down
+```
+
+#### LAN exposure example (team operation)
+- Start the server on a host in your LAN and set the client env to the LAN IP:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "env": {
+        "RULE_SERVER_URL": "http://192.168.1.20:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      }
+    }
+  }
+}
+```
+
+Note: With Makefile, you can use `make docker-up` / `make docker-down`.
 
 ## Tech Stack
 
