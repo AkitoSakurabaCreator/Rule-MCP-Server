@@ -6,11 +6,12 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (buildに必要なdevDependenciesも含める)
+RUN npm ci
 
-# Copy source code
+# Copy source code (excluding Storybook and test files)
 COPY . .
+RUN rm -rf .storybook src/**/*.stories.tsx src/**/*.test.tsx
 
 # Build the app
 RUN npm run build
