@@ -207,3 +207,15 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON api_keys(key_hash);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_project_members_project_id ON project_members(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_members_user_id ON project_members(user_id);
+
+-- Track MCP requests for metrics
+CREATE TABLE IF NOT EXISTS mcp_requests (
+    id SERIAL PRIMARY KEY,
+    method VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL, -- ok | error
+    duration_ms INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcp_requests_created_at ON mcp_requests(created_at);
+CREATE INDEX IF NOT EXISTS idx_mcp_requests_method ON mcp_requests(method);
