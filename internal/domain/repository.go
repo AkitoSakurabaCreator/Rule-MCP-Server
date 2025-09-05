@@ -12,6 +12,8 @@ type ProjectRepository interface {
 type RuleRepository interface {
 	Create(rule *Rule) error
 	GetByProjectID(projectID string) ([]*Rule, error)
+	GetByID(projectID, ruleID string) (*Rule, error)
+	Update(rule *Rule) error
 	Delete(projectID, ruleID string) error
 }
 
@@ -24,4 +26,17 @@ type GlobalRuleRepository interface {
 
 type ValidationRepository interface {
 	ValidateCode(projectID, code string) (*ValidationResult, error)
+}
+
+type RuleOption struct {
+	ID       int    `json:"id"`
+	Kind     string `json:"kind"` // type | severity
+	Value    string `json:"value"`
+	IsActive bool   `json:"is_active"`
+}
+
+type RuleOptionRepository interface {
+	GetByKind(kind string) ([]RuleOption, error)
+	Add(kind, value string) error
+	Delete(kind, value string) error
 }

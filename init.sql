@@ -49,6 +49,29 @@ CREATE TABLE IF NOT EXISTS rules (
     UNIQUE(project_id, rule_id)
 );
 
+-- Dynamic rule options (types / severities)
+CREATE TABLE IF NOT EXISTS rule_options (
+    id SERIAL PRIMARY KEY,
+    kind VARCHAR(50) NOT NULL, -- 'type' | 'severity'
+    value VARCHAR(100) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(kind, value)
+);
+
+-- Seed default options if not present
+INSERT INTO rule_options (kind, value)
+    VALUES
+    ('type', 'style'),
+    ('type', 'security'),
+    ('type', 'performance'),
+    ('type', 'naming'),
+    ('type', 'formatting'),
+    ('severity', 'error'),
+    ('severity', 'warning'),
+    ('severity', 'info')
+ON CONFLICT (kind, value) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS rule_violations (
     id SERIAL PRIMARY KEY,
     project_id VARCHAR(100) NOT NULL,
