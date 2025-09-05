@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -12,6 +12,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../services/api';
+import { adminApi, RuleOption } from '../services/adminApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const GlobalRuleForm: React.FC = () => {
   const navigate = useNavigate();
@@ -19,17 +21,39 @@ const GlobalRuleForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const { permissions } = useAuth();
+  const canManageRules = permissions.manageRules;
 
   const [formData, setFormData] = useState({
     language: 'general',
     rule_id: '',
     name: '',
     description: '',
-    type: 'style',
-    severity: 'warning',
+    type: '',
+    severity: '',
     pattern: '',
     message: '',
   });
+
+  const [typeOptions, setTypeOptions] = useState<string[]>([]);
+  const [severityOptions, setSeverityOptions] = useState<string[]>([]);
+  const [newType, setNewType] = useState('');
+  const [newSeverity, setNewSeverity] = useState('');
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const [types, severities] = await Promise.all([
+          adminApi.getRuleOptions('type'),
+          adminApi.getRuleOptions('severity'),
+        ]);
+        setTypeOptions(types.map((o: RuleOption) => o.value));
+        setSeverityOptions(severities.map((o: RuleOption) => o.value));
+      } catch (_) {
+      }
+    };
+    loadOptions();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,41 +132,52 @@ const GlobalRuleForm: React.FC = () => {
             helperText={t('globalRules.descriptionHelp')}
           />
 
-          <TextField
-            select
-            label={t('rules.type')}
-            value={formData.type}
-            onChange={(e) => handleChange('type', e.target.value)}
-            required
-            helperText={t('globalRules.typeHelp')}
-          >
-            {Object.entries(t('types', { returnObjects: true })).map(([key, value]) => (
-              <MenuItem key={key} value={key}>
-                {value as string}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField
+              select
+              label={t('rules.type')}
+              value={formData.type}
+              onChange={(e) => handleChange('type', e.target.value)}
+              helperText={t('globalRules.typeHelp')}
+              sx={{ flex: 1 }}
+            >
+              {typeOptions.map((v) => (
+                <MenuItem key={v} value={v}>{v}</MenuItem>
+              ))}
+            </TextField>
+            {canManageRules && (
+              <>
+                <TextField size="small" value={newType} onChange={(e) => setNewType(e.target.value)} placeholder={t('rules.addCustomType')} />
+                <Button size="small" onClick={async () => { const v = (newType || '').trim(); if (!v) return; try { await adminApi.addRuleOption('type', v); setNewType(''); const types = await adminApi.getRuleOptions('type'); setTypeOptions(types.map((o: RuleOption) => o.value)); } catch (_) {} }}>{t('common.add')}</Button>
+              </>
+            )}
+          </Box>
 
-          <TextField
-            select
-            label={t('rules.severity')}
-            value={formData.severity}
-            onChange={(e) => handleChange('severity', e.target.value)}
-            required
-            helperText={t('globalRules.severityHelp')}
-          >
-            {Object.entries(t('severity', { returnObjects: true })).map(([key, value]) => (
-              <MenuItem key={key} value={key}>
-                {value as string}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField
+              select
+              label={t('rules.severity')}
+              value={formData.severity}
+              onChange={(e) => handleChange('severity', e.target.value)}
+              helperText={t('globalRules.severityHelp')}
+              sx={{ flex: 1 }}
+            >
+              {severityOptions.map((v) => (
+                <MenuItem key={v} value={v}>{v}</MenuItem>
+              ))}
+            </TextField>
+            {canManageRules && (
+              <>
+                <TextField size="small" value={newSeverity} onChange={(e) => setNewSeverity(e.target.value)} placeholder={t('rules.addCustomSeverity')} />
+                <Button size="small" onClick={async () => { const v = (newSeverity || '').trim(); if (!v) return; try { await adminApi.addRuleOption('severity', v); setNewSeverity(''); const severities = await adminApi.getRuleOptions('severity'); setSeverityOptions(severities.map((o: RuleOption) => o.value)); } catch (_) {} }}>{t('common.add')}</Button>
+              </>
+            )}
+          </Box>
 
           <TextField
             label={t('rules.pattern')}
             value={formData.pattern}
             onChange={(e) => handleChange('pattern', e.target.value)}
-            required
             helperText={t('globalRules.patternHelp')}
           />
 
@@ -150,7 +185,6 @@ const GlobalRuleForm: React.FC = () => {
             label={t('rules.message')}
             value={formData.message}
             onChange={(e) => handleChange('message', e.target.value)}
-            required
             multiline
             rows={2}
             helperText={t('globalRules.messageHelp')}

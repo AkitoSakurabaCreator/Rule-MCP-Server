@@ -40,8 +40,8 @@ const RuleEdit: React.FC = () => {
   const navigate = useNavigate();
   const { projectId, ruleId } = useParams<{ projectId: string; ruleId: string }>();
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { permissions } = useAuth();
+  const canManageRules = permissions.manageRules;
 
   const isEditMode = !!ruleId;
 
@@ -209,7 +209,7 @@ const RuleEdit: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              {isAdmin && (
+              {canManageRules && (
                 <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
                   <TextField
                     size="small"
@@ -237,7 +237,7 @@ const RuleEdit: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              {isAdmin && (
+              {canManageRules && (
                 <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
                   <TextField
                     size="small"
@@ -333,7 +333,7 @@ const RuleEdit: React.FC = () => {
           </Grid>
 
           <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-            {isAdmin ? (
+            {canManageRules ? (
               <Button
                 type="submit"
                 variant="contained"
