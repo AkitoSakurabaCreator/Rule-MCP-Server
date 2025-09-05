@@ -111,6 +111,25 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Roles master for dynamic role management
+CREATE TABLE IF NOT EXISTS roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    permissions JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed default roles
+INSERT INTO roles (name, description, permissions)
+VALUES
+    ('admin', 'Administrator role with full permissions', '{"admin": true, "manage_users": true, "manage_rules": true, "manage_roles": true}'),
+    ('user', 'Standard user role', '{"admin": false, "manage_users": false, "manage_rules": true, "manage_roles": false}'),
+    ('public', 'Public read-only role', '{"admin": false, "manage_users": false, "manage_rules": false, "manage_roles": false}')
+ON CONFLICT (name) DO NOTHING;
+
 -- Create project_members table for team access control
 CREATE TABLE IF NOT EXISTS project_members (
     id SERIAL PRIMARY KEY,
