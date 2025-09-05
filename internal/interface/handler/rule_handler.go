@@ -54,8 +54,9 @@ func (h *RuleHandler) CreateRule(c *gin.Context) {
 		return
 	}
 
-	if role, ok := c.Get("userRole"); !ok || role != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+	// 権限制御
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
 
@@ -96,9 +97,9 @@ func (h *RuleHandler) UpdateRule(c *gin.Context) {
 		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "project_id and rule_id are required", nil)
 		return
 	}
-	// 権限制御（admin のみ）
-	if role, ok := c.Get("userRole"); !ok || role != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+	// 権限制御
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
 
@@ -136,9 +137,9 @@ func (h *RuleHandler) DeleteRule(c *gin.Context) {
 		return
 	}
 
-	// 権限制御（admin のみ）
-	if role, ok := c.Get("userRole"); !ok || role != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+	// 権限制御
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
 

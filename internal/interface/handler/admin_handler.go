@@ -16,6 +16,7 @@ type AdminHandler struct {
 	ruleRepo       domain.RuleRepository
 	globalRuleRepo domain.GlobalRuleRepository
 	ruleOptionRepo domain.RuleOptionRepository
+	roleRepo       domain.RoleRepository
 }
 
 type AdminStats struct {
@@ -61,17 +62,22 @@ type SystemLog struct {
 	Message   string    `json:"message"`
 }
 
-func NewAdminHandler(userRepo domain.UserRepository, projectRepo domain.ProjectRepository, ruleRepo domain.RuleRepository, globalRuleRepo domain.GlobalRuleRepository, ruleOptionRepo domain.RuleOptionRepository) *AdminHandler {
+func NewAdminHandler(userRepo domain.UserRepository, projectRepo domain.ProjectRepository, ruleRepo domain.RuleRepository, globalRuleRepo domain.GlobalRuleRepository, ruleOptionRepo domain.RuleOptionRepository, roleRepo domain.RoleRepository) *AdminHandler {
 	return &AdminHandler{
 		userRepo:       userRepo,
 		projectRepo:    projectRepo,
 		ruleRepo:       ruleRepo,
 		globalRuleRepo: globalRuleRepo,
 		ruleOptionRepo: ruleOptionRepo,
+		roleRepo:       roleRepo,
 	}
 }
 
 func (h *AdminHandler) GetStats(c *gin.Context) {
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		return
+	}
 	if h.userRepo == nil || h.projectRepo == nil || h.ruleRepo == nil {
 		stats := AdminStats{
 			TotalUsers:     3,
@@ -128,6 +134,10 @@ func (h *AdminHandler) GetStats(c *gin.Context) {
 }
 
 func (h *AdminHandler) GetUsers(c *gin.Context) {
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_users"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_users required", nil)
+		return
+	}
 	if h.userRepo == nil {
 		users := []AdminUser{
 			{ID: 1, Username: "admin", Email: "admin@rulemcp.com", FullName: "System Administrator", Role: "admin", IsActive: true, LastLogin: time.Now().Add(-time.Hour)},
@@ -153,6 +163,10 @@ func (h *AdminHandler) GetUsers(c *gin.Context) {
 }
 
 func (h *AdminHandler) GetApiKeys(c *gin.Context) {
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		return
+	}
 	apiKeys := []AdminApiKey{
 		{ID: 1, Name: "Admin API Key", Key: "admin_key_123", AccessLevel: "admin", Status: "active", CreatedAt: time.Now().Add(-24 * time.Hour), LastUsed: time.Now().Add(-time.Hour)},
 		{ID: 2, Name: "User API Key", Key: "user_key_456", AccessLevel: "user", Status: "expired", CreatedAt: time.Now().Add(-48 * time.Hour), LastUsed: time.Now().Add(-2 * time.Hour)},
@@ -161,6 +175,10 @@ func (h *AdminHandler) GetApiKeys(c *gin.Context) {
 }
 
 func (h *AdminHandler) GetMcpStats(c *gin.Context) {
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		return
+	}
 	stats := []McpStats{
 		{Method: "getRules", Count: 1234, LastUsed: "2分前", Status: "正常"},
 		{Method: "validateCode", Count: 567, LastUsed: "5分前", Status: "正常"},
@@ -169,6 +187,10 @@ func (h *AdminHandler) GetMcpStats(c *gin.Context) {
 }
 
 func (h *AdminHandler) GetSystemLogs(c *gin.Context) {
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		return
+	}
 	logs := []SystemLog{
 		{Timestamp: time.Now().Add(-5 * time.Minute), Level: "INFO", Message: "User 'admin' logged in successfully"},
 		{Timestamp: time.Now().Add(-10 * time.Minute), Level: "WARN", Message: "API key 'user_key_456' expired"},
@@ -179,6 +201,10 @@ func (h *AdminHandler) GetSystemLogs(c *gin.Context) {
 }
 
 func (h *AdminHandler) CreateUser(c *gin.Context) {
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_users"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_users required", nil)
+		return
+	}
 	var req struct {
 		Username string `json:"username" binding:"required"`
 		Email    string `json:"email" binding:"required,email"`
@@ -212,6 +238,10 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 }
 
 func (h *AdminHandler) UpdateUser(c *gin.Context) {
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_users"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_users required", nil)
+		return
+	}
 	userID := c.Param("id")
 	if userID == "" {
 		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "User ID is required", nil)
@@ -267,6 +297,10 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_users"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_users required", nil)
+		return
+	}
 	userID := c.Param("id")
 	if userID == "" {
 		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "User ID is required", nil)
@@ -293,6 +327,10 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 }
 
 func (h *AdminHandler) GenerateApiKey(c *gin.Context) {
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		return
+	}
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		AccessLevel string `json:"accessLevel" binding:"required"`
@@ -307,6 +345,10 @@ func (h *AdminHandler) GenerateApiKey(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteApiKey(c *gin.Context) {
+	if role, ok := c.Get("userRole"); !ok || role != "admin" {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		return
+	}
 	keyID := c.Param("id")
 	if keyID == "" {
 		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "API Key ID is required", nil)
@@ -335,8 +377,8 @@ func (h *AdminHandler) GetRuleOptions(c *gin.Context) {
 }
 
 func (h *AdminHandler) AddRuleOption(c *gin.Context) {
-	if role, ok := c.Get("userRole"); !ok || role != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
 	var req struct {
@@ -363,8 +405,8 @@ func (h *AdminHandler) AddRuleOption(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteRuleOption(c *gin.Context) {
-	if role, ok := c.Get("userRole"); !ok || role != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
 	var req struct {
@@ -388,6 +430,109 @@ func (h *AdminHandler) DeleteRuleOption(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Option deleted"})
+}
+
+// Roles management
+func (h *AdminHandler) GetRoles(c *gin.Context) {
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_roles"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
+		return
+	}
+	if h.roleRepo == nil {
+		httpx.JSONError(c, http.StatusServiceUnavailable, httpx.CodeInternal, "Role repository not available", nil)
+		return
+	}
+	roles, err := h.roleRepo.GetAll()
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, roles)
+}
+
+func (h *AdminHandler) CreateRole(c *gin.Context) {
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_roles"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
+		return
+	}
+	if h.roleRepo == nil {
+		httpx.JSONError(c, http.StatusServiceUnavailable, httpx.CodeInternal, "Role repository not available", nil)
+		return
+	}
+	var req struct {
+		Name        string          `json:"name" binding:"required"`
+		Description string          `json:"description"`
+		Permissions map[string]bool `json:"permissions"`
+		IsActive    *bool           `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		return
+	}
+	active := true
+	if req.IsActive != nil {
+		active = *req.IsActive
+	}
+	if err := h.roleRepo.Create(domain.Role{Name: req.Name, Description: req.Description, Permissions: req.Permissions, IsActive: active}); err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Role created"})
+}
+
+func (h *AdminHandler) UpdateRole(c *gin.Context) {
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_roles"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
+		return
+	}
+	if h.roleRepo == nil {
+		httpx.JSONError(c, http.StatusServiceUnavailable, httpx.CodeInternal, "Role repository not available", nil)
+		return
+	}
+	name := c.Param("name")
+	if name == "" {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Role name is required", nil)
+		return
+	}
+	var req struct {
+		Description string          `json:"description"`
+		Permissions map[string]bool `json:"permissions"`
+		IsActive    *bool           `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		return
+	}
+	active := true
+	if req.IsActive != nil {
+		active = *req.IsActive
+	}
+	if err := h.roleRepo.Update(name, domain.Role{Description: req.Description, Permissions: req.Permissions, IsActive: active}); err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Role updated"})
+}
+
+func (h *AdminHandler) DeleteRole(c *gin.Context) {
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_roles"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
+		return
+	}
+	if h.roleRepo == nil {
+		httpx.JSONError(c, http.StatusServiceUnavailable, httpx.CodeInternal, "Role repository not available", nil)
+		return
+	}
+	name := c.Param("name")
+	if name == "" {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Role name is required", nil)
+		return
+	}
+	if err := h.roleRepo.Delete(name); err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Role deleted"})
 }
 
 func generateRandomString(length int) string {
