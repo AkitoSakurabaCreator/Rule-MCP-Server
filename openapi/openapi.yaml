@@ -20,7 +20,11 @@ components:
           type: string
           description: 人間が読めるメッセージ（日本語）
         details:
-          description: 追加情報（任意）。オブジェクトまたは配列。
+          description: 追加情報（任意）
+          oneOf:
+            - type: object
+            - type: array
+            - type: string
         requestId:
           type: string
           description: リクエスト相関ID（サーバ側ログと突き合わせ可能）
@@ -29,6 +33,65 @@ components:
           format: date-time
           description: サーバ側の発生時刻（ISO8601）
       required: [code, message, timestamp]
+    Project:
+      type: object
+      properties:
+        project_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        language:
+          type: string
+        apply_global_rules:
+          type: boolean
+        access_level:
+          type: string
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [project_id, name]
+    Rule:
+      type: object
+      properties:
+        id:
+          type: integer
+        project_id:
+          type: string
+        rule_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, error]
+        pattern:
+          type: string
+        message:
+          type: string
+        is_active:
+          type: boolean
+      required: [project_id, rule_id, name]
+    ProjectRules:
+      type: object
+      properties:
+        project_id:
+          type: string
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rule'
+      required: [project_id, rules]
   responses:
     BadRequest:
       description: 不正なリクエスト
@@ -98,6 +161,8 @@ components:
 paths:
   /projects:
     get:
+      tags: [Projects]
+      operationId: listProjects
       summary: プロジェクト一覧取得
       responses:
         '200':
@@ -110,11 +175,13 @@ paths:
                   projects:
                     type: array
                     items:
-                      type: object
+                      $ref: '#/components/schemas/Project'
                 required: [projects]
         '500':
           $ref: '#/components/responses/InternalError'
     post:
+      tags: [Projects]
+      operationId: createProject
       summary: プロジェクト作成
       requestBody:
         required: true
@@ -137,6 +204,14 @@ paths:
       responses:
         '201':
           description: 作成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required: [message]
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -145,7 +220,9 @@ paths:
           $ref: '#/components/responses/InternalError'
   /rules:
     get:
-      summary: ルール一覧取得（クエリ: project_id）
+      tags: [Rules]
+      operationId: listRules
+      summary: "ルール一覧取得（クエリ: project_id）"
       parameters:
         - in: query
           name: project_id
@@ -159,9 +236,309 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/ProjectRules'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /rules/{project_id}/{rule_id}:
+    get:
+      tags: [Rules]
+      operationId: getRule
+      summary: 単一ルール取得
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: rule_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 正常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Rules]
+      operationId: updateRule
+      summary: ルール更新（admin/またはmanage_rules権限）
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: rule_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rule'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required: [message]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Rules]
+      operationId: deleteRule
+      summary: ルール削除（admin/またはmanage_rules権限）
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: rule_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 削除成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required: [message]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/rule-options:
+    get:
+      tags: [Admin]
+      operationId: getRuleOptions
+      summary: ルールオプション取得（kind=type|severity）
+      parameters:
+        - in: query
+          name: kind
+          required: true
+          schema:
+            type: string
+            enum: [type, severity]
+      responses:
+        '200':
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        kind:
+                          type: string
+                        value:
+                          type: string
+                        is_active:
+                          type: boolean
+      
+    post:
+      tags: [Admin]
+      operationId: addRuleOption
+      summary: ルールオプション追加（manage_rules権限）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum: [type, severity]
+                value:
+                  type: string
+              required: [kind, value]
+      responses:
+        '201':
+          description: 作成成功
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Admin]
+      operationId: deleteRuleOption
+      summary: ルールオプション削除（manage_rules権限）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum: [type, severity]
+                value:
+                  type: string
+              required: [kind, value]
+      responses:
+        '200':
+          description: 削除成功
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/roles:
+    get:
+      tags: [Admin]
+      operationId: listRoles
+      summary: ロール一覧取得（manage_roles権限）
+      responses:
+        '200':
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    name: { type: string }
+                    description: { type: string }
+                    permissions:
+                      type: object
+                      additionalProperties:
+                        type: boolean
+                    is_active: { type: boolean }
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Admin]
+      operationId: createRole
+      summary: ロール作成（manage_roles権限）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                permissions:
+                  type: object
+                  additionalProperties:
+                    type: boolean
+                is_active: { type: boolean }
+              required: [name]
+      responses:
+        '201':
+          description: 作成成功
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/roles/{name}:
+    put:
+      tags: [Admin]
+      operationId: updateRole
+      summary: ロール更新（manage_roles権限）
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description: { type: string }
+                permissions:
+                  type: object
+                  additionalProperties:
+                    type: boolean
+                is_active: { type: boolean }
+      responses:
+        '200':
+          description: 更新成功
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Admin]
+      operationId: deleteRole
+      summary: ロール削除（manage_roles権限）
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 削除成功
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
