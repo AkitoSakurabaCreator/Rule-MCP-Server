@@ -39,9 +39,23 @@ cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 ```
 
 #### Claude Desktop
-```bash
-# 設定テンプレートをコピー
-cp config/claude-desktop-mcp-config.template.json ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```json
+// ~/Library/Application Support/Claude/claude_desktop_config.json を作成
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": ["dlx", "rule-mcp-server"],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
 ```
 
 ### 3. 利用開始！
@@ -49,6 +63,46 @@ cp config/claude-desktop-mcp-config.template.json ~/Library/Application\ Support
 AIエージェント（Cursor/Claude Desktop）を再起動して、コーディングルールを自動取得・適用できるようになります。
 
 **📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
+
+### サーバー稼働の前提と起動手順（重要）
+
+このMCPクライアント設定は、バックエンドのRule MCP Serverが稼働していることを前提としています。
+
+#### 稼働確認
+```bash
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} が返れば稼働中
+```
+
+#### サーバー未稼働の場合（ローカル起動: Docker）
+```bash
+# リポジトリを取得
+git clone https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git
+cd Rule-MCP-Server
+
+# Dockerで起動（推奨）
+docker compose up -d
+
+# 停止
+docker compose down
+```
+
+#### LAN 内公開の例（チーム運用）
+- サーバーをLAN上のホストで起動し、クライアント側の環境変数をLAN IPに設定:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "env": {
+        "RULE_SERVER_URL": "http://192.168.1.20:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      }
+    }
+  }
+}
+```
+
+参考: Makefile を使う場合は `make docker-up` / `make docker-down`
 
 ## 技術スタック
 
@@ -1062,28 +1116,54 @@ curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
 ```
 
 ### **MCPクライアント設定**
+
+#### Cursor
 ```json
 // ~/.cursor/mcp.json
 {
   "mcpServers": {
     "rule-mcp-server": {
-      "command": "curl",
+      "command": "pnpm",
       "args": [
-        "-X", "POST",
-        "-H", "Content-Type: application/json",
-        "-H", "X-API-Key: ${MCP_API_KEY}",
-        "-d", "{\"id\":\"${requestId}\",\"method\":\"${method}\",\"params\":${params}}",
-        "${MCP_SERVER_URL}/mcp/request"
+        "dlx",
+        "rule-mcp-server"
       ],
       "env": {
-        "MCP_SERVER_URL": "http://localhost:18081",
-        "MCP_API_KEY": "your_api_key_here",
-        "AUTO_INJECT": "true"
-      }
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
     }
   }
 }
 ```
+
+#### Claude Desktop
+```json
+// ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "rule-mcp-server"
+      ],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+補足: `MCP_API_KEY` は未設定でも動作します（Publicアクセス）。チーム運用や管理APIを使う場合にのみ設定してください。
 
 ## 🚀 クイックスタート
 
@@ -1096,7 +1176,7 @@ pnpm add -g rule-mcp-server
 # 2. 設定ファイルを作成
 cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 
-# 3. AIエージェント（Cursor/Cline）で利用開始！
+# 3. AIエージェント（Cursor/Claude Desktop/Cline）で利用開始！
 ```
 
 **📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server) として公開済み
