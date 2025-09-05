@@ -1,5 +1,8 @@
 # Rule MCP Server
 
+[![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A MCP (Model Context Protocol) server that allows AI agents (Cursor, Cline) to retrieve and apply common coding rules.
 
 ## Features
@@ -270,6 +273,8 @@ pnpm add -g rule-mcp-server
 pnpm dlx rule-mcp-server
 ```
 
+**📦 npm package**: Published as [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
+
 ##### **Development Build**
 ```bash
 # Install dependencies
@@ -481,7 +486,7 @@ This avoids conflicts with common ports (8080, 5432, 3000).
 ### pnpm Package Usage (Recommended)
 
 ```bash
-# 1. Install MCP server
+# 1. Install MCP server (or auto-install with pnpm dlx)
 pnpm add -g rule-mcp-server
 
 # 2. Create configuration file
@@ -489,6 +494,8 @@ cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 
 # 3. Start using with AI agents (Cursor/Cline)!
 ```
+
+**📦 npm package**: Published as [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
 
 ### Docker Environment
 
