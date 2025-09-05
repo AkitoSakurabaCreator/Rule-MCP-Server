@@ -43,6 +43,13 @@ export interface SystemLog {
   message: string;
 }
 
+export interface RuleOption {
+  id: number;
+  kind: 'type' | 'severity';
+  value: string;
+  is_active: boolean;
+}
+
 // 管理者用APIサービス
 export const adminApi = {
   // 統計データ取得
@@ -101,5 +108,22 @@ export const adminApi = {
   // APIキー削除
   deleteApiKey: async (id: number): Promise<void> => {
     await api.delete(`/admin/api-keys/${id}`);
+  },
+
+  // ルールオプション取得
+  getRuleOptions: async (kind: 'type' | 'severity'): Promise<RuleOption[]> => {
+    const response = await api.get(`/admin/rule-options`, { params: { kind } });
+    // backend returns { options: [...] }
+    return response.data.options as RuleOption[];
+  },
+
+  // ルールオプション追加（admin権限が必要）
+  addRuleOption: async (kind: 'type' | 'severity', value: string): Promise<void> => {
+    await api.post(`/admin/rule-options`, { kind, value });
+  },
+
+  // ルールオプション削除（admin権限が必要）
+  deleteRuleOption: async (kind: 'type' | 'severity', value: string): Promise<void> => {
+    await api.delete(`/admin/rule-options`, { data: { kind, value } });
   },
 };
