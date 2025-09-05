@@ -27,6 +27,7 @@ import {
   DialogContent,
   DialogActions,
   Snackbar,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -38,8 +39,10 @@ import {
   Analytics as AnalyticsIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useTranslation } from 'react-i18next';
 import { adminApi, AdminStats as AdminStatsType, MCPStats as MCPStatsType, SystemLog as SystemLogType, Role as RoleType } from '../../services/adminApi';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -84,6 +87,9 @@ interface ApiKey {
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
+  const { permissions } = useAuth();
+  const canManageUsers = permissions.manageUsers;
+  const canManageRoles = permissions.manageRoles;
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -100,6 +106,7 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [systemLogs, setSystemLogs] = useState<SystemLogType[]>([]);
+  const [logCounts, setLogCounts] = useState<{ INFO: number; WARN: number; ERROR: number }>({ INFO: 0, WARN: 0, ERROR: 0 });
   const [openAddUser, setOpenAddUser] = useState(false);
   const [openEditUser, setOpenEditUser] = useState<null | User>(null);
   const [userForm, setUserForm] = useState({
@@ -121,6 +128,11 @@ const AdminDashboard: React.FC = () => {
   const [openAddRole, setOpenAddRole] = useState(false);
   const [openEditRole, setOpenEditRole] = useState<null | RoleType>(null);
   const [roleForm, setRoleForm] = useState<RoleType>({ name: '', description: '', permissions: { manage_users: false, manage_rules: true, manage_roles: false }, is_active: true });
+  const applyPreset = (preset: 'readonly' | 'editor' | 'admin') => {
+    if (preset === 'readonly') setRoleForm((r) => ({ ...r, permissions: { manage_users: false, manage_rules: false, manage_roles: false } }));
+    if (preset === 'editor') setRoleForm((r) => ({ ...r, permissions: { manage_users: false, manage_rules: true, manage_roles: false } }));
+    if (preset === 'admin') setRoleForm((r) => ({ ...r, permissions: { manage_users: true, manage_rules: true, manage_roles: true } }));
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -128,18 +140,18 @@ const AdminDashboard: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const [s, u, k, m, logs, rls] = await Promise.all([
+        const [s, u, k, m, logs] = await Promise.all([
           adminApi.getStats(),
-          adminApi.getUsers(),
+          canManageUsers ? adminApi.getUsers() : Promise.resolve([]),
           adminApi.getApiKeys(),
           adminApi.getMCPStats(),
           adminApi.getSystemLogs(),
-          adminApi.getRoles(),
         ]);
+        const rls = canManageRoles ? await adminApi.getRoles() : [];
         if (!mounted) return;
         setStats(s);
         setUsers(
-          u.map((x) => ({
+          (u as any[]).map((x: any) => ({
             id: x.id,
             username: x.username,
             email: x.email,
@@ -151,6 +163,15 @@ const AdminDashboard: React.FC = () => {
         setApiKeys(k as unknown as ApiKey[]);
         setMcpStats(m);
         setSystemLogs(logs);
+        // 集計（INFO/WARN/ERROR）
+        const counts = logs.reduce((acc: any, l: any) => {
+          const level = (l.level || '').toUpperCase();
+          if (level === 'WARN') acc.WARN += 1;
+          else if (level === 'ERROR') acc.ERROR += 1;
+          else acc.INFO += 1;
+          return acc;
+        }, { INFO: 0, WARN: 0, ERROR: 0 });
+        setLogCounts(counts);
         setRoles(rls);
       } catch (e: any) {
         setError(e?.message || 'Failed to load admin data');
@@ -161,6 +182,25 @@ const AdminDashboard: React.FC = () => {
     load();
     return () => {
       mounted = false;
+    };
+  }, [canManageUsers, canManageRoles]);
+
+  // CPU率（systemLoadを含む統計）を定期更新（5秒間隔）
+  useEffect(() => {
+    let timer: any;
+    const tick = async () => {
+      try {
+        const s = await adminApi.getStats();
+        setStats(s);
+      } catch (e: any) {
+        // ignore transient errors
+      }
+    };
+    // 初回即時 + 5秒間隔
+    tick();
+    timer = setInterval(tick, 5000);
+    return () => {
+      if (timer) clearInterval(timer);
     };
   }, []);
 
@@ -324,6 +364,7 @@ const AdminDashboard: React.FC = () => {
           <Tab 
             icon={<SecurityIcon />} 
             label={t('dashboard.roles') || 'Roles'} 
+            disabled={!canManageRoles}
             iconPosition="start"
           />
         </Tabs>
@@ -335,6 +376,7 @@ const AdminDashboard: React.FC = () => {
           <Typography variant="h5">
             {t('dashboard.userManagement')}
           </Typography>
+          {canManageUsers && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -345,6 +387,7 @@ const AdminDashboard: React.FC = () => {
           >
             {t('dashboard.addUser')}
           </Button>
+          )}
         </Box>
         
         <TableContainer component={Paper}>
@@ -356,7 +399,7 @@ const AdminDashboard: React.FC = () => {
                 <TableCell>{t('dashboard.role')}</TableCell>
                 <TableCell>{t('dashboard.status')}</TableCell>
                 <TableCell>{t('dashboard.lastLogin')}</TableCell>
-                <TableCell>{t('dashboard.actions')}</TableCell>
+                {canManageUsers && <TableCell>{t('dashboard.actions')}</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -375,6 +418,7 @@ const AdminDashboard: React.FC = () => {
                     <Chip label={user.status || 'inactive'} color={user.status === 'active' ? 'success' : 'default'} size="small" />
                   </TableCell>
                   <TableCell>{user.lastLogin}</TableCell>
+                  {canManageUsers && (
                   <TableCell>
                     <IconButton
                       size="small"
@@ -396,7 +440,7 @@ const AdminDashboard: React.FC = () => {
                       size="small"
                       color="error"
                       onClick={async () => {
-                        if (!window.confirm('Delete this user?')) return;
+                        if (!window.confirm(t('dashboard.deleteUserConfirm') || 'Delete this user?')) return;
                         try {
                           await adminApi.deleteUser(user.id);
                           setUsers(prev => prev.filter(u => u.id !== user.id));
@@ -408,6 +452,7 @@ const AdminDashboard: React.FC = () => {
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -421,6 +466,7 @@ const AdminDashboard: React.FC = () => {
           <Typography variant="h5">
             {t('dashboard.apiKeyManagement')}
           </Typography>
+          {canManageUsers && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -431,6 +477,7 @@ const AdminDashboard: React.FC = () => {
           >
             {t('dashboard.generateApiKey')}
           </Button>
+          )}
         </Box>
         
         <TableContainer component={Paper}>
@@ -443,7 +490,7 @@ const AdminDashboard: React.FC = () => {
                 <TableCell>{t('dashboard.status')}</TableCell>
                 <TableCell>{t('dashboard.createdAt')}</TableCell>
                 <TableCell>{t('dashboard.lastUsed')}</TableCell>
-                <TableCell>{t('dashboard.actions')}</TableCell>
+                {canManageUsers && <TableCell>{t('dashboard.actions')}</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -471,6 +518,7 @@ const AdminDashboard: React.FC = () => {
                   </TableCell>
                   <TableCell>{apiKey.createdAt}</TableCell>
                   <TableCell>{apiKey.lastUsed}</TableCell>
+                  {canManageUsers && (
                   <TableCell>
                     <IconButton size="small" color="primary">
                       <EditIcon />
@@ -483,6 +531,7 @@ const AdminDashboard: React.FC = () => {
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -516,7 +565,7 @@ const AdminDashboard: React.FC = () => {
             onClick={async () => {
               try {
                 if (!apiKeyForm.name) {
-                  setSnackbar({ open: true, message: 'Nameは必須です', severity: 'error' });
+                  setSnackbar({ open: true, message: t('dashboard.nameRequired') || 'Name is required', severity: 'error' });
                   return;
                 }
                 const created = await adminApi.generateApiKey({ name: apiKeyForm.name, accessLevel: apiKeyForm.accessLevel });
@@ -524,7 +573,7 @@ const AdminDashboard: React.FC = () => {
                 setOpenAddApiKey(false);
                 setSnackbar({ open: true, message: 'APIキーを生成しました', severity: 'success' });
               } catch (e: any) {
-                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || '生成に失敗しました', severity: 'error' });
+                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || (t('dashboard.apiKeyGenerateFailed') as string) || 'Failed to generate', severity: 'error' });
               }
             }}
           >{t('common.create')}</Button>
@@ -535,7 +584,7 @@ const AdminDashboard: React.FC = () => {
       <Dialog open={!!openDeleteApiKey} onClose={() => setOpenDeleteApiKey(null)}>
         <DialogTitle>{t('common.delete') || 'Delete'}</DialogTitle>
         <DialogContent>
-          <Typography>{t('dashboard.deleteApiKeyConfirm') || 'このAPIキーを削除しますか？'}</Typography>
+          <Typography>{t('dashboard.deleteApiKeyConfirm') || 'Delete this API key?'}</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteApiKey(null)}>{t('common.cancel')}</Button>
@@ -550,7 +599,7 @@ const AdminDashboard: React.FC = () => {
                 setOpenDeleteApiKey(null);
                 setSnackbar({ open: true, message: 'APIキーを削除しました', severity: 'success' });
               } catch (e: any) {
-                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || '削除に失敗しました', severity: 'error' });
+                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || (t('dashboard.apiKeyDeleteFailed') as string) || 'Failed to delete', severity: 'error' });
               }
             }}
           >{t('common.delete')}</Button>
@@ -749,15 +798,15 @@ const AdminDashboard: React.FC = () => {
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2">INFO</Typography>
-                    <Chip label="1,234" size="small" color="info" />
+                    <Chip label={String(logCounts.INFO)} size="small" color="info" />
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2">WARN</Typography>
-                    <Chip label="45" size="small" color="warning" />
+                    <Chip label={String(logCounts.WARN)} size="small" color="warning" />
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2">ERROR</Typography>
-                    <Chip label="12" size="small" color="error" />
+                    <Chip label={String(logCounts.ERROR)} size="small" color="error" />
                   </Box>
                 </Box>
               </CardContent>
@@ -818,7 +867,7 @@ const AdminDashboard: React.FC = () => {
                 setOpenAddUser(false);
                 setSnackbar({ open: true, message: 'ユーザーを作成しました', severity: 'success' });
               } catch (e: any) {
-                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || '作成に失敗しました', severity: 'error' });
+                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || (t('dashboard.userCreateFailed') as string) || 'Failed to create', severity: 'error' });
               }
             }}
           >{t('common.create')}</Button>
@@ -875,7 +924,7 @@ const AdminDashboard: React.FC = () => {
                 setOpenEditUser(null);
                 setSnackbar({ open: true, message: 'ユーザーを更新しました', severity: 'success' });
               } catch (e: any) {
-                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || '更新に失敗しました', severity: 'error' });
+                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || (t('dashboard.userUpdateFailed') as string) || 'Failed to update', severity: 'error' });
               }
             }}
           >{t('common.save')}</Button>
@@ -888,9 +937,11 @@ const AdminDashboard: React.FC = () => {
           <Typography variant="h5">
             {t('dashboard.roles') || 'Roles'}
           </Typography>
+          {canManageRoles && (
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setRoleForm({ name: '', description: '', permissions: { manage_users: false, manage_rules: true, manage_roles: false }, is_active: true }); setOpenAddRole(true); }}>
             {t('common.add')}
           </Button>
+          )}
         </Box>
         <TableContainer component={Paper}>
           <Table>
@@ -898,9 +949,9 @@ const AdminDashboard: React.FC = () => {
               <TableRow>
                 <TableCell>{t('dashboard.name')}</TableCell>
                 <TableCell>{t('dashboard.description') || 'Description'}</TableCell>
-                <TableCell>Permissions</TableCell>
+                <TableCell>{t('dashboard.permissions') || 'Permissions'}</TableCell>
                 <TableCell>{t('dashboard.status')}</TableCell>
-                <TableCell>{t('dashboard.actions')}</TableCell>
+                {canManageRoles && <TableCell>{t('dashboard.actions')}</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -916,14 +967,19 @@ const AdminDashboard: React.FC = () => {
                   <TableCell>
                     <Chip label={r.is_active ? (t('dashboard.active') as string) : (t('dashboard.inactive') as string)} color={r.is_active ? 'success' : 'default'} size="small" />
                   </TableCell>
+                  {canManageRoles && (
                   <TableCell>
                     <IconButton size="small" color="primary" onClick={() => { setRoleForm({ name: r.name, description: r.description, permissions: r.permissions, is_active: r.is_active }); setOpenEditRole(r); }}>
                       <EditIcon />
                     </IconButton>
-                    <IconButton size="small" color="error" onClick={async () => { if (!window.confirm('Delete this role?')) return; await adminApi.deleteRole(r.name); setRoles(prev => prev.filter(x => x.name !== r.name)); }}>
+                    <IconButton size="small" onClick={() => { setRoleForm({ name: `${r.name}-copy`, description: r.description, permissions: r.permissions, is_active: r.is_active }); setOpenAddRole(true); }}>
+                      <ContentCopyIcon />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={async () => { if (!window.confirm(t('dashboard.deleteRoleConfirm') || 'Delete this role?')) return; await adminApi.deleteRole(r.name); setRoles(prev => prev.filter(x => x.name !== r.name)); }}>
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -943,11 +999,31 @@ const AdminDashboard: React.FC = () => {
               <TextField label={t('dashboard.description') || 'Description'} fullWidth value={roleForm.description} onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })} />
             </Grid>
             <Grid sx={{ width: '100%' }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Permissions</Typography>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('dashboard.rolePresets') || 'Role Presets'}</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('readonly')}>{t('dashboard.presetReadOnly') || 'ReadOnly'}</Button>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('editor')}>{t('dashboard.presetEditor') || 'Editor'}</Button>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('admin')}>{t('dashboard.presetAdmin') || 'Admin'}</Button>
+              </Box>
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('dashboard.permissions') || 'Permissions'}</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Button variant={roleForm.permissions?.manage_users ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_users: !roleForm.permissions?.manage_users } })}>manage_users</Button>
-                <Button variant={roleForm.permissions?.manage_rules ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_rules: !roleForm.permissions?.manage_rules } })}>manage_rules</Button>
-                <Button variant={roleForm.permissions?.manage_roles ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_roles: !roleForm.permissions?.manage_roles } })}>manage_roles</Button>
+                <Tooltip title={t('permissions.manage_users.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_users ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_users: !roleForm.permissions?.manage_users } })}>
+                    {t('permissions.manage_users.name') || 'manage_users'}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('permissions.manage_rules.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_rules ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_rules: !roleForm.permissions?.manage_rules } })}>
+                    {t('permissions.manage_rules.name') || 'manage_rules'}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('permissions.manage_roles.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_roles ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_roles: !roleForm.permissions?.manage_roles } })}>
+                    {t('permissions.manage_roles.name') || 'manage_roles'}
+                  </Button>
+                </Tooltip>
               </Box>
             </Grid>
           </Grid>
@@ -970,11 +1046,31 @@ const AdminDashboard: React.FC = () => {
               <TextField label={t('dashboard.description') || 'Description'} fullWidth value={roleForm.description} onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })} />
             </Grid>
             <Grid sx={{ width: '100%' }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Permissions</Typography>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('dashboard.rolePresets') || 'Role Presets'}</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('readonly')}>{t('dashboard.presetReadOnly') || 'ReadOnly'}</Button>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('editor')}>{t('dashboard.presetEditor') || 'Editor'}</Button>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('admin')}>{t('dashboard.presetAdmin') || 'Admin'}</Button>
+              </Box>
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('dashboard.permissions') || 'Permissions'}</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Button variant={roleForm.permissions?.manage_users ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_users: !roleForm.permissions?.manage_users } })}>manage_users</Button>
-                <Button variant={roleForm.permissions?.manage_rules ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_rules: !roleForm.permissions?.manage_rules } })}>manage_rules</Button>
-                <Button variant={roleForm.permissions?.manage_roles ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_roles: !roleForm.permissions?.manage_roles } })}>manage_roles</Button>
+                <Tooltip title={t('permissions.manage_users.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_users ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_users: !roleForm.permissions?.manage_users } })}>
+                    {t('permissions.manage_users.name') || 'manage_users'}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('permissions.manage_rules.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_rules ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_rules: !roleForm.permissions?.manage_rules } })}>
+                    {t('permissions.manage_rules.name') || 'manage_rules'}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('permissions.manage_roles.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_roles ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_roles: !roleForm.permissions?.manage_roles } })}>
+                    {t('permissions.manage_roles.name') || 'manage_roles'}
+                  </Button>
+                </Tooltip>
               </Box>
             </Grid>
           </Grid>

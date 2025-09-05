@@ -35,8 +35,8 @@ const RuleList: React.FC = () => {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { permissions } = useAuth();
+  const canManageRules = permissions.manageRules;
 
   const loadRules = useCallback(async () => {
     if (!projectId) return;
@@ -130,7 +130,7 @@ const RuleList: React.FC = () => {
             {t('rules.projectRules')}: {projectId}
           </Typography>
         </Box>
-        {isAdmin && (
+        {canManageRules && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -163,7 +163,7 @@ const RuleList: React.FC = () => {
                 <TableCell>{t('rules.severity')}</TableCell>
                 <TableCell>{t('rules.pattern')}</TableCell>
                 <TableCell>{t('rules.status')}</TableCell>
-                {isAdmin && <TableCell>{t('common.actions')}</TableCell>}
+                {canManageRules && <TableCell>{t('common.actions')}</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -208,7 +208,7 @@ const RuleList: React.FC = () => {
                       size="small"
                     />
                   </TableCell>
-                  {isAdmin && (
+                  {canManageRules && (
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
                         <IconButton

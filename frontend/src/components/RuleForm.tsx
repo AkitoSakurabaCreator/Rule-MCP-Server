@@ -19,8 +19,8 @@ const RuleForm: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { permissions } = useAuth();
+  const canManageRules = permissions.manageRules;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -154,7 +154,7 @@ const RuleForm: React.FC = () => {
                 <MenuItem key={v} value={v}>{v}</MenuItem>
               ))}
             </TextField>
-            {isAdmin && (
+            {canManageRules && (
               <>
                 <TextField size="small" value={newType} onChange={(e) => setNewType(e.target.value)} placeholder={t('rules.addCustomType')} />
                 <Button size="small" onClick={() => addOption('type', newType)}>{t('common.add')}</Button>
@@ -176,7 +176,7 @@ const RuleForm: React.FC = () => {
                 <MenuItem key={v} value={v}>{v}</MenuItem>
               ))}
             </TextField>
-            {isAdmin && (
+            {canManageRules && (
               <>
                 <TextField size="small" value={newSeverity} onChange={(e) => setNewSeverity(e.target.value)} placeholder={t('rules.addCustomSeverity')} />
                 <Button size="small" onClick={() => addOption('severity', newSeverity)}>{t('common.add')}</Button>
@@ -208,7 +208,7 @@ const RuleForm: React.FC = () => {
             >
               {t('common.cancel')}
             </Button>
-            {isAdmin ? (
+            {canManageRules ? (
               <Button
                 type="submit"
                 variant="contained"
@@ -218,7 +218,7 @@ const RuleForm: React.FC = () => {
               </Button>
             ) : (
               <Typography variant="body2" color="text.secondary">
-                権限がありません
+                {t('common.permissionDenied')}
               </Typography>
             )}
           </Box>
