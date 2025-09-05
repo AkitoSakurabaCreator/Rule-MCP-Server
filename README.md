@@ -1,5 +1,8 @@
 # Rule MCP Server
 
+[![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 AIエージェント（Cursor、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
 
 ## 機能
@@ -249,9 +252,152 @@ GET  /mcp/ws         # WebSocket MCP接続
 - **`validateCode`**: コードのルール違反を検証
 - **`getProjectInfo`**: プロジェクト情報を取得
 
-### Cursor設定
+### 標準的なMCPサーバー設定（推奨）
 
-`~/.cursor/mcp.json`に以下を設定：
+このプロジェクトは**標準的なMCP（Model Context Protocol）サーバー**を提供します。
+
+#### **特徴**
+- ✅ **標準MCP SDK使用**: `@modelcontextprotocol/sdk`による完全準拠
+- ✅ **StdioServerTransport**: 標準的なMCPクライアントと互換
+- ✅ **pnpmパッケージ対応**: `pnpm dlx`で簡単インストール
+- ✅ **Docker対応**: 本番環境での安定動作
+- ✅ **テンプレート設定**: 簡単セットアップ
+
+#### **1. MCPサーバーのインストール**
+
+##### **pnpm経由（推奨）**
+```bash
+# グローバルインストール
+pnpm add -g rule-mcp-server
+
+# またはpnpm dlx経由（インストール不要）
+pnpm dlx rule-mcp-server
+```
+
+**📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server) として公開済み
+
+##### **開発版ビルド**
+```bash
+# 依存関係のインストール
+make install-mcp
+
+# MCPサーバーのビルド
+make build-mcp
+```
+
+#### **2. 環境別設定**
+
+##### **pnpmパッケージ使用（推奨）**
+```bash
+# pnpmパッケージ用設定テンプレートを使用
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
+```
+
+設定例（pnpmパッケージ）:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": ["dlx", "rule-mcp-server"],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": ""
+      },
+      "description": "Standard MCP Server for Rule Management",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+##### **Docker環境**
+```bash
+# Docker環境を起動
+make docker-up
+
+# Docker用設定テンプレートを使用
+cp config/docker-mcp-config.template.json ~/.cursor/mcp_settings.json
+```
+
+設定例（Docker環境）:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "node",
+      "args": ["/path/to/your/RuleMCPServer/cmd/mcp-server/build/index.js"],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": ""
+      },
+      "description": "Standard MCP Server for Rule Management (Docker)",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+##### **開発環境**
+```bash
+# 開発サーバーを起動
+make run
+
+# 標準設定テンプレートを使用
+cp config/standard-mcp-config.template.json ~/.cursor/mcp_settings.json
+```
+
+設定例（開発環境）:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "node",
+      "args": ["/path/to/your/RuleMCPServer/cmd/mcp-server/build/index.js"],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18081",
+        "MCP_API_KEY": ""
+      },
+      "description": "Standard MCP Server for Rule Management (Development)",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+#### **3. 設定ファイルの配置**
+- **Cursor**: `~/.cursor/mcp_settings.json`
+- **Cline**: `~/.cline/mcp_settings.json`
+- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+#### **4. 利用可能なツール**
+標準MCPサーバーは以下のツールを提供：
+
+| ツール名            | 説明                         | 必須パラメータ         |
+|---------------------|------------------------------|------------------------|
+| `getRules`          | プロジェクトルール取得       | `project_id`           |
+| `validateCode`      | コード検証                   | `project_id`, `code`   |
+| `getProjectInfo`    | プロジェクト情報取得         | `project_id`           |
+| `autoDetectProject` | プロジェクト自動検出         | `path`                 |
+| `scanLocalProjects` | ローカルプロジェクトスキャン | `base_path` (optional) |
+| `getGlobalRules`    | グローバルルール取得         | `language`             |
+
+#### **5. 利用可能なリソース**
+標準MCPサーバーは以下のリソースを提供：
+
+| リソースURI                      | 説明                   |
+|----------------------------------|------------------------|
+| `rule://projects/list`           | プロジェクト一覧       |
+| `rule://{project_id}/rules`      | プロジェクト固有ルール |
+| `rule://{project_id}/info`       | プロジェクト情報       |
+| `rule://global-rules/{language}` | 言語別グローバルルール |
+
+### 従来のHTTP設定（互換性）
+
+従来のHTTP APIを使用する場合：
 
 ```json
 {
@@ -907,22 +1053,263 @@ curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
 }
 ```
 
-## 貢献
+## 🚀 クイックスタート
 
-1. このリポジトリをフォーク
-2. フィーチャーブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add some amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
+### pnpmパッケージ使用（推奨）
 
-## ライセンス
+```bash
+# 1. MCPサーバーをインストール（またはpnpm dlxで自動インストール）
+pnpm add -g rule-mcp-server
 
-MIT License
+# 2. 設定ファイルを作成
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 
-## サポート
+# 3. AIエージェント（Cursor/Cline）で利用開始！
+```
 
-問題が発生した場合や質問がある場合は、以下の方法でサポートを受けることができます：
+**📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server) として公開済み
 
-- **Issues**: GitHubのIssuesページで問題を報告
-- **Discussions**: GitHubのDiscussionsページで質問・議論
-- **Wiki**: 詳細なドキュメントやチュートリアル
+### Docker環境
+
+```bash
+# 1. リポジトリをクローン
+git clone https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git
+cd Rule-MCP-Server
+
+# 2. Docker環境を起動
+make docker-up
+
+# 3. MCPサーバーをビルド
+make install-mcp && make build-mcp
+
+# 4. 設定ファイルを作成
+cp config/docker-mcp-config.template.json ~/.cursor/mcp_settings.json
+# パスを編集: ${PROJECT_PATH} → /path/to/your/Rule-MCP-Server
+
+# 5. AIエージェント（Cursor/Cline）で利用開始！
+```
+
+### 開発環境
+
+```bash
+# 1. 依存関係のインストール
+go mod tidy
+cd frontend && npm install && cd ..
+
+# 2. サーバー起動
+make run        # バックエンド（ポート18081）
+make run-frontend  # フロントエンド（ポート3000）
+
+# 3. MCPサーバーをビルド
+make install-mcp && make build-mcp
+
+# 4. 設定ファイルを作成
+cp config/standard-mcp-config.template.json ~/.cursor/mcp_settings.json
+```
+
+## 🌟 主な特徴
+
+### ✅ 標準MCP準拠
+- **完全なMCP互換性**: `@modelcontextprotocol/sdk`使用
+- **標準的なツール・リソース**: AIエージェントとの完璧な統合
+- **StdioServerTransport**: 標準的な通信プロトコル
+
+### ✅ 豊富な機能
+- **6つのMCPツール**: ルール取得、コード検証、プロジェクト自動検出など
+- **5つのMCPリソース**: プロジェクト一覧、ルール情報、グローバルルール
+- **プロジェクト自動検出**: AIが自動的に適切なルールを適用
+
+### ✅ 本番対応
+- **Docker環境**: 安定した本番運用
+- **PostgreSQL**: 高性能データベース
+- **認証・認可**: APIキー、セッション認証
+- **多言語対応**: 6言語サポート（日本語、英語、中国語など）
+
+### ✅ 開発者フレンドリー
+- **クリーンアーキテクチャ**: 保守性の高い設計
+- **Web UI**: React製の管理画面
+- **テンプレート設定**: 簡単セットアップ
+- **豊富なドキュメント**: 詳細な使用方法
+
+## 🎯 使用ケース
+
+### 個人開発者
+```bash
+# 認証なしで簡単利用
+curl http://localhost:18080/api/v1/rules?project_id=my-project
+```
+
+### チーム開発
+```bash
+# APIキーでチーム管理
+curl -H "X-API-Key: team_key" http://localhost:18080/api/v1/projects
+```
+
+### AIエージェント統合
+```json
+// Cursor/Clineで自動ルール適用
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "node",
+      "args": ["/path/to/Rule-MCP-Server/cmd/mcp-server/build/index.js"],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080"
+      }
+    }
+  }
+}
+```
+
+## 📊 システム要件
+
+### 最小要件
+- **OS**: Linux, macOS, Windows
+- **Go**: 1.21+
+- **Node.js**: 18+
+- **Docker**: 20.10+ (推奨)
+
+### 推奨要件
+- **メモリ**: 2GB以上
+- **ストレージ**: 1GB以上
+- **CPU**: 2コア以上
+
+## 🔧 開発・貢献
+
+### 開発環境のセットアップ
+
+```bash
+# 1. フォーク & クローン
+git clone https://github.com/your-username/Rule-MCP-Server.git
+cd Rule-MCP-Server
+
+# 2. 開発用ブランチ作成
+git checkout -b feature/your-feature
+
+# 3. 依存関係インストール
+make deps
+make install-mcp
+
+# 4. 開発サーバー起動
+make run
+make run-frontend
+```
+
+### テスト実行
+
+```bash
+# バックエンドテスト
+make test
+
+# フロントエンドテスト
+cd frontend && npm test
+
+# MCPサーバーテスト
+cd cmd/mcp-server && npm test
+```
+
+### コード品質チェック
+
+```bash
+# Go言語
+make fmt
+make lint
+
+# TypeScript
+cd cmd/mcp-server && npm run lint
+```
+
+## 🤝 貢献ガイドライン
+
+### 貢献の流れ
+
+1. **Issue作成**: バグ報告や機能提案
+2. **フォーク**: リポジトリをフォーク
+3. **ブランチ作成**: `feature/your-feature` または `fix/your-fix`
+4. **開発**: コード変更とテスト追加
+5. **プルリクエスト**: 詳細な説明と共に提出
+
+### コミットメッセージ規約
+
+```bash
+# 機能追加
+feat: add project auto-detection feature
+
+# バグ修正
+fix: resolve MCP server connection issue
+
+# ドキュメント更新
+docs: update README with Docker setup
+
+# リファクタリング
+refactor: improve error handling in MCP handlers
+```
+
+### 開発のベストプラクティス
+
+- **テスト**: 新機能には必ずテストを追加
+- **ドキュメント**: APIの変更は必ずドキュメント更新
+- **型安全性**: TypeScriptの型定義を適切に使用
+- **エラーハンドリング**: 適切なエラーメッセージとログ出力
+
+## 📈 ロードマップ
+
+### v1.1.0 (予定)
+- [ ] **Kubernetes対応**: Helm Chart提供
+- [ ] **メトリクス**: Prometheus/Grafana統合
+- [ ] **プラグインシステム**: カスタムルール拡張
+
+### v1.2.0 (予定)
+- [ ] **AI統合**: GPT-4によるルール自動生成
+- [ ] **IDE拡張**: VS Code Extension
+- [ ] **クラウド対応**: AWS/GCP/Azure対応
+
+### v2.0.0 (予定)
+- [ ] **分散アーキテクチャ**: マイクロサービス化
+- [ ] **リアルタイム協働**: WebSocket活用
+- [ ] **機械学習**: ルール推奨システム
+
+## 🏆 コミュニティ
+
+### 貢献者
+
+このプロジェクトは以下の素晴らしい貢献者によって支えられています：
+
+- [@AkitoSakurabaCreator](https://github.com/AkitoSakurabaCreator) - プロジェクト創設者・メンテナー
+
+### 謝辞
+
+- **Model Context Protocol**: 標準的なAIエージェント統合を可能にする素晴らしいプロトコル
+- **Go Community**: 高性能なバックエンド開発環境
+- **React Community**: 優れたフロントエンド開発体験
+- **Docker**: 一貫した開発・本番環境
+
+## 📄 ライセンス
+
+MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
+
+## 🆘 サポート・コミュニティ
+
+### 問題報告・質問
+
+- **🐛 バグ報告**: [GitHub Issues](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/issues)
+- **💡 機能提案**: [GitHub Issues](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/issues)
+- **❓ 質問・議論**: [GitHub Discussions](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/discussions)
+
+### ドキュメント
+
+- **📚 詳細ドキュメント**: [GitHub Wiki](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/wiki)
+- **🎥 チュートリアル**: [YouTube Playlist](https://youtube.com/playlist?list=...)
+- **📖 API リファレンス**: [API Docs](https://api-docs.rulemcp.com)
+
+### コミュニティ
+
+- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/...)
+- **🐦 Twitter**: [@RuleMCPServer](https://twitter.com/RuleMCPServer)
+- **📧 メーリングリスト**: [Google Groups](https://groups.google.com/g/rule-mcp-server)
+
+---
+
+**⭐ このプロジェクトが役に立ったら、GitHubでスターをお願いします！**
+
+**🚀 AIエージェントとの統合で、より良いコード品質を実現しましょう！**

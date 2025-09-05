@@ -1,0 +1,27 @@
+{
+  "_comment": "Rule MCP Server - PNPM Package Configuration Template",
+  "_instructions": [
+    "1. Copy this file to your MCP settings directory",
+    "2. Replace ${RULE_SERVER_URL} with your server URL (default: http://localhost:18080)",
+    "3. Replace ${MCP_API_KEY} with your API key (optional, leave empty for public access)",
+    "4. Remove these comment lines before using",
+    "5. npm package: https://www.npmjs.com/package/rule-mcp-server"
+  ],
+  "_examples": {
+    "RULE_SERVER_URL": "http://localhost:18080",
+    "MCP_API_KEY": "your-api-key-here"
+  },
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": ["dlx", "rule-mcp-server"],
+      "env": {
+        "RULE_SERVER_URL": "${RULE_SERVER_URL:-http://localhost:18080}",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
