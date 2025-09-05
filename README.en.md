@@ -680,23 +680,6 @@ refactor: improve error handling in MCP handlers
 - **Type Safety**: Use TypeScript type definitions appropriately
 - **Error Handling**: Appropriate error messages and log output
 
-## 📈 Roadmap
-
-### v1.1.0 (Planned)
-- [ ] **Kubernetes Support**: Helm Chart provision
-- [ ] **Metrics**: Prometheus/Grafana integration
-- [ ] **Plugin System**: Custom rule extensions
-
-### v1.2.0 (Planned)
-- [ ] **AI Integration**: GPT-4 automatic rule generation
-- [ ] **IDE Extension**: VS Code Extension
-- [ ] **Cloud Support**: AWS/GCP/Azure support
-
-### v2.0.0 (Planned)
-- [ ] **Distributed Architecture**: Microservices
-- [ ] **Real-time Collaboration**: WebSocket utilization
-- [ ] **Machine Learning**: Rule recommendation system
-
 ## 🏆 Community
 
 ### Contributors
