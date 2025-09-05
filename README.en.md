@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A MCP (Model Context Protocol) server that allows AI agents (Cursor, Claude Desktop, Cline) to retrieve and apply common coding rules.
+A MCP (Model Context Protocol) server that allows AI agents (Cursor, Claude Code, Cline) to retrieve and apply common coding rules.
 
 ## Features
 
@@ -38,29 +38,24 @@ pnpm add -g rule-mcp-server
 cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 ```
 
-#### Claude Desktop
-```json
-// Create ~/Library/Application Support/Claude/claude_desktop_config.json
-{
-  "mcpServers": {
-    "rule-mcp-server": {
-      "command": "pnpm",
-      "args": ["dlx", "rule-mcp-server"],
-      "env": {
-        "RULE_SERVER_URL": "http://localhost:18080",
-        "MCP_API_KEY": "${MCP_API_KEY:-}"
-      },
-      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
-      "disabled": false,
-      "autoApprove": []
-    }
-  }
-}
+#### Claude Code
+```bash
+# Add MCP server to Claude Code (stdio)
+claude mcp add rule-mcp-server --env RULE_SERVER_URL=http://localhost:18080 -- pnpm dlx rule-mcp-server
+
+# With API key
+claude mcp add rule-mcp-server \
+  --env RULE_SERVER_URL=http://localhost:18080 \
+  --env MCP_API_KEY=your_api_key \
+  -- pnpm dlx rule-mcp-server
+
+# Reference: Anthropic official docs
+# https://docs.anthropic.com/ja/docs/claude-code/mcp
 ```
 
 ### 3. Start Using!
 
-Restart your AI agent (Cursor/Claude Desktop) and it will automatically retrieve and apply coding rules.
+Restart your AI agent (Cursor/Claude Code) and it will automatically retrieve and apply coding rules.
 
 **📦 npm package**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
 
