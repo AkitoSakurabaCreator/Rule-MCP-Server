@@ -3,7 +3,7 @@ package fixtures
 import (
 	"time"
 
-	"github.com/opm008077/RuleMCPServer/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 )
 
 // Users テスト用ユーザーデータ

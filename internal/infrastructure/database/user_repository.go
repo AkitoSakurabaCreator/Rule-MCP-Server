@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/opm008077/RuleMCPServer/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 )
 
 type PostgresUserRepository struct {
