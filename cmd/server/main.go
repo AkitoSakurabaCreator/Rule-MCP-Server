@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/infrastructure/database"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/interface/handler"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/config"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
-	"github.com/opm008077/RuleMCPServer/internal/domain"
-	"github.com/opm008077/RuleMCPServer/internal/infrastructure/database"
-	"github.com/opm008077/RuleMCPServer/internal/interface/handler"
-	"github.com/opm008077/RuleMCPServer/internal/usecase"
-	"github.com/opm008077/RuleMCPServer/pkg/config"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func main() {
@@ -22,6 +24,7 @@ func main() {
 	var ruleRepo domain.RuleRepository
 	var globalRuleRepo domain.GlobalRuleRepository
 	var userRepo domain.UserRepository
+	var ruleOptionRepo domain.RuleOptionRepository
 
 	db, err := database.NewPostgresDatabase(
 		os.Getenv("DB_HOST"),
@@ -41,6 +44,7 @@ func main() {
 		projectRepo = db
 		ruleRepo = database.NewPostgresRuleRepository(db.DB)
 		globalRuleRepo = database.NewPostgresGlobalRuleRepository(db.DB)
+		ruleOptionRepo = database.NewPostgresRuleOptionRepository(db.DB)
 		userRepo = database.NewPostgresUserRepository(db.DB)
 	}
 
@@ -49,7 +53,9 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(httpx.RecoveryJSON())
+	r.Use(httpx.RequestID())
 
 	// CORSミドルウェアを追加
 	r.Use(func(c *gin.Context) {
@@ -65,15 +71,34 @@ func main() {
 		c.Next()
 	})
 
+	// JWTミドルウェア（任意）: Authorization ヘッダーがあれば userRole を設定。なければ public
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "default-secret-key-change-in-production"
+	}
+	r.Use(func(c *gin.Context) {
+		c.Set("userRole", "public")
+		auth := c.GetHeader("Authorization")
+		if len(auth) > 7 && (auth[:7] == "Bearer " || auth[:7] == "bearer ") {
+			tokenStr := auth[7:]
+			claims := &handler.Claims{}
+			token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+				return []byte(jwtSecret), nil
+			})
+			if err == nil && token.Valid {
+				if claims.Role != "" {
+					c.Set("userRole", claims.Role)
+				}
+			}
+		}
+		c.Next()
+	})
+
 	// ヘルスチェック
 	healthHandler := handler.NewHealthHandler()
 	r.GET("/api/v1/health", healthHandler.HealthCheck)
 
 	// 認証エンドポイント（データベース接続なしでも利用可能）
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "default-secret-key-change-in-production"
-	}
 	authHandler := handler.NewAuthHandler(jwtSecret)
 	auth := r.Group("/api/v1/auth")
 	{
@@ -88,10 +113,10 @@ func main() {
 	// 管理者用APIエンドポイント
 	var adminHandler *handler.AdminHandler
 	if projectRepo != nil {
-		adminHandler = handler.NewAdminHandler(userRepo, projectRepo, ruleRepo, globalRuleRepo)
+		adminHandler = handler.NewAdminHandler(userRepo, projectRepo, ruleRepo, globalRuleRepo, ruleOptionRepo)
 	} else {
-		// データベースが利用できない場合はモックハンドラーを使用
-		adminHandler = handler.NewAdminHandler(nil, nil, nil, nil)
+		// データベースが利用できない場合はモックハンドラーを使用（オプションはnil）
+		adminHandler = handler.NewAdminHandler(nil, nil, nil, nil, nil)
 	}
 	admin := r.Group("/api/v1/admin")
 	{
@@ -105,6 +130,10 @@ func main() {
 		admin.DELETE("/api-keys/:id", adminHandler.DeleteApiKey)
 		admin.GET("/mcp-stats", adminHandler.GetMcpStats)
 		admin.GET("/system-logs", adminHandler.GetSystemLogs)
+		// Rule options
+		admin.GET("/rule-options", adminHandler.GetRuleOptions)
+		admin.POST("/rule-options", adminHandler.AddRuleOption)
+		admin.DELETE("/rule-options", adminHandler.DeleteRuleOption)
 	}
 
 	// データベースが利用可能な場合のみ、管理用エンドポイントを有効化
@@ -130,7 +159,9 @@ func main() {
 
 			// ルール管理
 			api.GET("/rules", ruleHandler.GetRules)
+			api.GET("/rules/:project_id/:rule_id", ruleHandler.GetRule)
 			api.POST("/rules", ruleHandler.CreateRule)
+			api.PUT("/rules/:project_id/:rule_id", ruleHandler.UpdateRule)
 			api.DELETE("/rules/:project_id/:rule_id", ruleHandler.DeleteRule)
 			api.POST("/rules/validate", ruleHandler.ValidateCode)
 			api.POST("/rules/export", ruleHandler.ExportRules)
