@@ -25,6 +25,7 @@ func main() {
 	var globalRuleRepo domain.GlobalRuleRepository
 	var userRepo domain.UserRepository
 	var ruleOptionRepo domain.RuleOptionRepository
+	var roleRepo domain.RoleRepository
 
 	db, err := database.NewPostgresDatabase(
 		os.Getenv("DB_HOST"),
@@ -46,6 +47,7 @@ func main() {
 		globalRuleRepo = database.NewPostgresGlobalRuleRepository(db.DB)
 		ruleOptionRepo = database.NewPostgresRuleOptionRepository(db.DB)
 		userRepo = database.NewPostgresUserRepository(db.DB)
+		roleRepo = database.NewPostgresRoleRepository(db.DB)
 	}
 
 	// 本番環境ではGinのデバッグモードを無効化
@@ -77,7 +79,9 @@ func main() {
 		jwtSecret = "default-secret-key-change-in-production"
 	}
 	r.Use(func(c *gin.Context) {
+		// デフォルト
 		c.Set("userRole", "public")
+		c.Set("permissions", map[string]bool{"manage_users": false, "manage_rules": false, "manage_roles": false})
 		auth := c.GetHeader("Authorization")
 		if len(auth) > 7 && (auth[:7] == "Bearer " || auth[:7] == "bearer ") {
 			tokenStr := auth[7:]
@@ -88,6 +92,14 @@ func main() {
 			if err == nil && token.Valid {
 				if claims.Role != "" {
 					c.Set("userRole", claims.Role)
+					// permissions lookup
+					if roleRepo != nil {
+						if role, err := roleRepo.GetByName(claims.Role); err == nil {
+							if role.Permissions != nil {
+								c.Set("permissions", role.Permissions)
+							}
+						}
+					}
 				}
 			}
 		}
@@ -113,10 +125,10 @@ func main() {
 	// 管理者用APIエンドポイント
 	var adminHandler *handler.AdminHandler
 	if projectRepo != nil {
-		adminHandler = handler.NewAdminHandler(userRepo, projectRepo, ruleRepo, globalRuleRepo, ruleOptionRepo)
+		adminHandler = handler.NewAdminHandler(userRepo, projectRepo, ruleRepo, globalRuleRepo, ruleOptionRepo, roleRepo)
 	} else {
 		// データベースが利用できない場合はモックハンドラーを使用（オプションはnil）
-		adminHandler = handler.NewAdminHandler(nil, nil, nil, nil, nil)
+		adminHandler = handler.NewAdminHandler(nil, nil, nil, nil, nil, nil)
 	}
 	admin := r.Group("/api/v1/admin")
 	{
@@ -134,6 +146,11 @@ func main() {
 		admin.GET("/rule-options", adminHandler.GetRuleOptions)
 		admin.POST("/rule-options", adminHandler.AddRuleOption)
 		admin.DELETE("/rule-options", adminHandler.DeleteRuleOption)
+		// Roles
+		admin.GET("/roles", adminHandler.GetRoles)
+		admin.POST("/roles", adminHandler.CreateRole)
+		admin.PUT("/roles/:name", adminHandler.UpdateRole)
+		admin.DELETE("/roles/:name", adminHandler.DeleteRole)
 	}
 
 	// データベースが利用可能な場合のみ、管理用エンドポイントを有効化
