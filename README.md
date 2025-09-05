@@ -256,10 +256,22 @@ GET  /mcp/ws         # WebSocket MCP接続
 #### **特徴**
 - ✅ **標準MCP SDK使用**: `@modelcontextprotocol/sdk`による完全準拠
 - ✅ **StdioServerTransport**: 標準的なMCPクライアントと互換
+- ✅ **pnpmパッケージ対応**: `pnpm dlx`で簡単インストール
 - ✅ **Docker対応**: 本番環境での安定動作
 - ✅ **テンプレート設定**: 簡単セットアップ
 
-#### **1. MCPサーバーのビルド**
+#### **1. MCPサーバーのインストール**
+
+##### **pnpm経由（推奨）**
+```bash
+# グローバルインストール
+pnpm add -g rule-mcp-server
+
+# またはpnpm dlx経由（インストール不要）
+pnpm dlx rule-mcp-server
+```
+
+##### **開発版ビルド**
 ```bash
 # 依存関係のインストール
 make install-mcp
@@ -270,7 +282,32 @@ make build-mcp
 
 #### **2. 環境別設定**
 
-##### **Docker環境（推奨）**
+##### **pnpmパッケージ使用（推奨）**
+```bash
+# pnpmパッケージ用設定テンプレートを使用
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
+```
+
+設定例（pnpmパッケージ）:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": ["dlx", "rule-mcp-server"],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": ""
+      },
+      "description": "Standard MCP Server for Rule Management",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+##### **Docker環境**
 ```bash
 # Docker環境を起動
 make docker-up
@@ -1013,7 +1050,19 @@ curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
 
 ## 🚀 クイックスタート
 
-### Docker環境（推奨）
+### pnpmパッケージ使用（推奨）
+
+```bash
+# 1. MCPサーバーをインストール
+pnpm add -g rule-mcp-server
+
+# 2. 設定ファイルを作成
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
+
+# 3. AIエージェント（Cursor/Cline）で利用開始！
+```
+
+### Docker環境
 
 ```bash
 # 1. リポジトリをクローン
