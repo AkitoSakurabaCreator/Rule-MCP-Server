@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Card,
@@ -34,6 +34,12 @@ import {
   Code as CodeIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import {
+  adminApi,
+  AdminStats as AdminStatsType,
+  MCPStats as MCPStatsType,
+  SystemLog as SystemLogType,
+} from '../../services/adminApi';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -62,7 +68,7 @@ interface User {
   username: string;
   email: string;
   role: string;
-  status: string;
+  status?: string;
   lastLogin: string;
 }
 
@@ -79,63 +85,61 @@ interface ApiKey {
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
   const [tabValue, setTabValue] = useState(0);
-  const [users] = useState<User[]>([
-    {
-      id: 1,
-      username: 'admin',
-      email: 'admin@example.com',
-      role: 'admin',
-      status: 'active',
-      lastLogin: '2024-01-15 14:30:15',
-    },
-    {
-      id: 2,
-      username: 'user1',
-      email: 'user1@example.com',
-      role: 'user',
-      status: 'active',
-      lastLogin: '2024-01-15 13:45:22',
-    },
-    {
-      id: 3,
-      username: 'user2',
-      email: 'user2@example.com',
-      role: 'user',
-      status: 'inactive',
-      lastLogin: '2024-01-14 16:20:10',
-    },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [stats, setStats] = useState<AdminStatsType>({
+    totalUsers: 0,
+    totalProjects: 0,
+    totalRules: 0,
+    activeApiKeys: 0,
+    mcpRequests: 0,
+    activeSessions: 0,
+    systemLoad: '0%',
+  });
+  const [mcpStats, setMcpStats] = useState<MCPStatsType[]>([]);
+  const [systemLogs, setSystemLogs] = useState<SystemLogType[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [apiKeys] = useState<ApiKey[]>([
-    {
-      id: 1,
-      name: 'Admin API Key',
-      key: 'admin_key_123',
-      accessLevel: 'admin',
-      status: 'active',
-      createdAt: '2024-01-01',
-      lastUsed: '2024-01-15 14:30:15',
-    },
-    {
-      id: 2,
-      name: 'User API Key',
-      key: 'user_key_456',
-      accessLevel: 'user',
-      status: 'expired',
-      createdAt: '2024-01-10',
-      lastUsed: '2024-01-15 10:15:30',
-    },
-  ]);
-
-  const stats = {
-    totalUsers: users.length,
-    totalProjects: 15,
-    totalRules: 89,
-    activeApiKeys: apiKeys.filter(key => key.status === 'active').length,
-    mcpRequests: 1234,
-    activeSessions: 8,
-    systemLoad: '23%',
-  };
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [s, u, k, m, logs] = await Promise.all([
+          adminApi.getStats(),
+          adminApi.getUsers(),
+          adminApi.getApiKeys(),
+          adminApi.getMCPStats(),
+          adminApi.getSystemLogs(),
+        ]);
+        if (!mounted) return;
+        setStats(s);
+        setUsers(
+          u.map((x) => ({
+            id: x.id,
+            username: x.username,
+            email: x.email,
+            role: x.role,
+            status: x.isActive ? 'active' : 'inactive',
+            lastLogin: x.lastLogin,
+          }))
+        );
+        setApiKeys(k as unknown as ApiKey[]);
+        setMcpStats(m);
+        setSystemLogs(logs);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load admin data');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     console.log('Tab changed to:', newValue);
@@ -147,6 +151,17 @@ const AdminDashboard: React.FC = () => {
       <Typography variant="h4" sx={{ mb: 3 }}>
         {t('dashboard.title')}
       </Typography>
+
+      {loading && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Loading...
+        </Typography>
+      )}
+      {error && (
+        <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
 
       {/* 統計カード */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -323,11 +338,7 @@ const AdminDashboard: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip 
-                      label={user.status} 
-                      color={user.status === 'active' ? 'success' : 'default'}
-                      size="small"
-                    />
+                    <Chip label={user.status || 'inactive'} color={user.status === 'active' ? 'success' : 'default'} size="small" />
                   </TableCell>
                   <TableCell>{user.lastLogin}</TableCell>
                   <TableCell>
@@ -524,22 +535,16 @@ const AdminDashboard: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>getRules</TableCell>
-                        <TableCell>1,234</TableCell>
-                        <TableCell>2分前</TableCell>
-                        <TableCell>
-                          <Chip label="正常" color="success" size="small" />
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>validateCode</TableCell>
-                        <TableCell>567</TableCell>
-                        <TableCell>5分前</TableCell>
-                        <TableCell>
-                          <Chip label="正常" color="success" size="small" />
-                        </TableCell>
-                      </TableRow>
+                      {mcpStats.map((row, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{row.method}</TableCell>
+                          <TableCell>{row.count}</TableCell>
+                          <TableCell>{row.lastUsed}</TableCell>
+                          <TableCell>
+                            <Chip label={row.status} color={row.status === '正常' || row.status === 'ok' ? 'success' : 'warning'} size="small" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
