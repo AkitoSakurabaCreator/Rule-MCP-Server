@@ -10,6 +10,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func hasPerm(c *gin.Context, key string) bool {
+	v, ok := c.Get("permissions")
+	if !ok || v == nil {
+		return false
+	}
+	m, ok := v.(map[string]bool)
+	if !ok || m == nil {
+		return false
+	}
+	return m[key]
+}
+
 type AdminHandler struct {
 	userRepo       domain.UserRepository
 	projectRepo    domain.ProjectRepository
@@ -134,7 +146,7 @@ func (h *AdminHandler) GetStats(c *gin.Context) {
 }
 
 func (h *AdminHandler) GetUsers(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_users"] {
+	if !hasPerm(c, "manage_users") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_users required", nil)
 		return
 	}
@@ -201,7 +213,7 @@ func (h *AdminHandler) GetSystemLogs(c *gin.Context) {
 }
 
 func (h *AdminHandler) CreateUser(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_users"] {
+	if !hasPerm(c, "manage_users") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_users required", nil)
 		return
 	}
@@ -238,7 +250,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 }
 
 func (h *AdminHandler) UpdateUser(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_users"] {
+	if !hasPerm(c, "manage_users") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_users required", nil)
 		return
 	}
@@ -297,7 +309,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_users"] {
+	if !hasPerm(c, "manage_users") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_users required", nil)
 		return
 	}
@@ -377,7 +389,7 @@ func (h *AdminHandler) GetRuleOptions(c *gin.Context) {
 }
 
 func (h *AdminHandler) AddRuleOption(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+	if !hasPerm(c, "manage_rules") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
@@ -405,7 +417,7 @@ func (h *AdminHandler) AddRuleOption(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteRuleOption(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+	if !hasPerm(c, "manage_rules") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
@@ -434,24 +446,25 @@ func (h *AdminHandler) DeleteRuleOption(c *gin.Context) {
 
 // Roles management
 func (h *AdminHandler) GetRoles(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_roles"] {
+	if !hasPerm(c, "manage_roles") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
 		return
 	}
 	if h.roleRepo == nil {
-		httpx.JSONError(c, http.StatusServiceUnavailable, httpx.CodeInternal, "Role repository not available", nil)
+		c.JSON(http.StatusOK, []domain.Role{})
 		return
 	}
 	roles, err := h.roleRepo.GetAll()
 	if err != nil {
-		httpx.JSONFromError(c, err)
+		// ロールテーブル未作成などの場合でもダッシュボードを壊さない
+		c.JSON(http.StatusOK, []domain.Role{})
 		return
 	}
 	c.JSON(http.StatusOK, roles)
 }
 
 func (h *AdminHandler) CreateRole(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_roles"] {
+	if !hasPerm(c, "manage_roles") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
 		return
 	}
@@ -481,7 +494,7 @@ func (h *AdminHandler) CreateRole(c *gin.Context) {
 }
 
 func (h *AdminHandler) UpdateRole(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_roles"] {
+	if !hasPerm(c, "manage_roles") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
 		return
 	}
@@ -515,7 +528,7 @@ func (h *AdminHandler) UpdateRole(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteRole(c *gin.Context) {
-	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_roles"] {
+	if !hasPerm(c, "manage_roles") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
 		return
 	}
