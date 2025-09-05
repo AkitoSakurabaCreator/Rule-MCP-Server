@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-AIエージェント（Cursor、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
+AIエージェント（Cursor、Claude Desktop、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
 
 ## 機能
 
@@ -17,6 +17,38 @@ AIエージェント（Cursor、Cline）が共通のルールを取得・適用�
 - **多言語対応（i18n）**: 英語、日本語、中国語、ヒンディー語、スペイン語、アラビア語
 - **ダークテーマ対応**: ライト/ダークモード切り替え
 - **クリーンアーキテクチャ**による保守性の高い設計
+
+## 🚀 クイックスタート
+
+### 1. MCPサーバーのインストール
+
+```bash
+# pnpm dlx経由（推奨・インストール不要）
+pnpm dlx rule-mcp-server
+
+# またはグローバルインストール
+pnpm add -g rule-mcp-server
+```
+
+### 2. AIエージェント設定
+
+#### Cursor
+```bash
+# 設定テンプレートをコピー
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
+```
+
+#### Claude Desktop
+```bash
+# 設定テンプレートをコピー
+cp config/claude-desktop-mcp-config.template.json ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+### 3. 利用開始！
+
+AIエージェント（Cursor/Claude Desktop）を再起動して、コーディングルールを自動取得・適用できるようになります。
+
+**📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
 
 ## 技術スタック
 
