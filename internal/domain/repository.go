@@ -56,3 +56,16 @@ type RoleRepository interface {
 	Update(name string, role Role) error
 	Delete(name string) error
 }
+
+type MCPMethodStat struct {
+	Method   string `json:"method"`
+	Count    int    `json:"count"`
+	LastUsed string `json:"lastUsed"`
+	Status   string `json:"status"`
+}
+
+type MetricsRepository interface {
+	RecordMCP(method string, status string, durationMs int) error
+	GetMCPStatsLast24h() ([]MCPMethodStat, error)
+	GetMCPRequestsCountLast24h() (int, error)
+}

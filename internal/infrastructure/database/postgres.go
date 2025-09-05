@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/apperr"
@@ -31,20 +32,17 @@ type PostgresRoleRepository struct {
 	DB *sql.DB
 }
 
-// Ensure PostgresDatabase implements ProjectRepository
+type PostgresMetricsRepository struct {
+	DB *sql.DB
+}
+
+// Ensure implementations
 var _ domain.ProjectRepository = (*PostgresDatabase)(nil)
-
-// Ensure PostgresRuleRepository implements RuleRepository
 var _ domain.RuleRepository = (*PostgresRuleRepository)(nil)
-
-// Ensure PostgresGlobalRuleRepository implements GlobalRuleRepository
 var _ domain.GlobalRuleRepository = (*PostgresGlobalRuleRepository)(nil)
-
-// Ensure PostgresRuleOptionRepository implements RuleOptionRepository
 var _ domain.RuleOptionRepository = (*PostgresRuleOptionRepository)(nil)
-
-// Ensure PostgresRoleRepository implements RoleRepository
 var _ domain.RoleRepository = (*PostgresRoleRepository)(nil)
+var _ domain.MetricsRepository = (*PostgresMetricsRepository)(nil)
 
 func NewPostgresDatabase(host, port, user, password, dbname string) (*PostgresDatabase, error) {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -77,6 +75,10 @@ func NewPostgresRuleOptionRepository(db *sql.DB) *PostgresRuleOptionRepository {
 
 func NewPostgresRoleRepository(db *sql.DB) *PostgresRoleRepository {
 	return &PostgresRoleRepository{DB: db}
+}
+
+func NewPostgresMetricsRepository(db *sql.DB) *PostgresMetricsRepository {
+	return &PostgresMetricsRepository{DB: db}
 }
 
 func (d *PostgresDatabase) Close() error {
@@ -393,6 +395,42 @@ func (d *PostgresDatabase) GetByLanguage(language string) ([]*domain.Project, er
 	}
 
 	return projects, nil
+}
+
+// MetricsRepository implementation
+func (m *PostgresMetricsRepository) RecordMCP(method string, status string, durationMs int) error {
+	q := `INSERT INTO mcp_requests (method, status, duration_ms, created_at) VALUES ($1, $2, $3, $4)`
+	_, err := m.DB.Exec(q, method, status, durationMs, time.Now())
+	return mapDBError(err)
+}
+
+func (m *PostgresMetricsRepository) GetMCPStatsLast24h() ([]domain.MCPMethodStat, error) {
+	q := `SELECT method, COUNT(*), MAX(created_at) FROM mcp_requests WHERE created_at > NOW() - INTERVAL '24 hours' GROUP BY method ORDER BY COUNT(*) DESC`
+	rows, err := m.DB.Query(q)
+	if err != nil {
+		return nil, mapDBError(err)
+	}
+	defer rows.Close()
+	stats := []domain.MCPMethodStat{}
+	for rows.Next() {
+		var method string
+		var cnt int
+		var last time.Time
+		if err := rows.Scan(&method, &cnt, &last); err != nil {
+			return nil, mapDBError(err)
+		}
+		stats = append(stats, domain.MCPMethodStat{Method: method, Count: cnt, LastUsed: last.Format("2006-01-02 15:04:05"), Status: "ok"})
+	}
+	return stats, nil
+}
+
+func (m *PostgresMetricsRepository) GetMCPRequestsCountLast24h() (int, error) {
+	q := `SELECT COUNT(*) FROM mcp_requests WHERE created_at > NOW() - INTERVAL '24 hours'`
+	var cnt int
+	if err := m.DB.QueryRow(q).Scan(&cnt); err != nil {
+		return 0, mapDBError(err)
+	}
+	return cnt, nil
 }
 
 func mapDBError(err error) error {
