@@ -46,8 +46,11 @@ const RuleList: React.FC = () => {
     if (!projectId) return;
     
     try {
-      const response = await api.get(`/projects/${projectId}/rules`);
+      console.log('Loading rules for project:', projectId);
+      const response = await api.get(`/rules?project_id=${projectId}`);
+      console.log('API Response:', response.data);
       setRules(response.data.rules || []);
+      console.log('Rules set:', response.data.rules || []);
     } catch (error) {
       console.error('Failed to load rules:', error);
     } finally {
@@ -59,8 +62,11 @@ const RuleList: React.FC = () => {
     if (!projectId) return;
     
     try {
-      const response = await api.get(`/projects/${projectId}`);
-      setProjectName(response.data.name);
+      const response = await api.get(`/projects`);
+      const project = response.data.projects.find((p: any) => p.project_id === projectId);
+      if (project) {
+        setProjectName(project.name);
+      }
     } catch (error) {
       console.error('Failed to load project info:', error);
     }
@@ -70,7 +76,7 @@ const RuleList: React.FC = () => {
     if (!projectId || !ruleToDelete) return;
 
     try {
-      await api.delete(`/projects/${projectId}/rules/${ruleToDelete}`);
+      await api.delete(`/rules/${projectId}/${ruleToDelete}`);
       await loadRules();
       setDeleteDialogOpen(false);
       setRuleToDelete(null);

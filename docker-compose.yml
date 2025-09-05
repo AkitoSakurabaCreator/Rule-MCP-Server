@@ -47,6 +47,8 @@ services:
     container_name: rule-manager-ui
     ports:
       - "13000:80"  # 標準80を避けて13000を使用
+    environment:
+      - REACT_APP_API_URL=http://localhost:18080/api/v1
     depends_on:
       - rule-mcp-server
     restart: unless-stopped

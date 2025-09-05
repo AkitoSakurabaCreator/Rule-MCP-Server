@@ -4,6 +4,7 @@ type ProjectRepository interface {
 	Create(project *Project) error
 	GetByID(projectID string) (*Project, error)
 	GetAll() ([]*Project, error)
+	GetByLanguage(language string) ([]*Project, error)
 	Update(project *Project) error
 	Delete(projectID string) error
 }
