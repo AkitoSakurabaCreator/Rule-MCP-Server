@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -58,7 +59,7 @@ func NewAuthHandler(jwtSecret string) *AuthHandler {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := token.SignedString(h.jwtSecret)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+			httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "トークン生成に失敗しました", nil)
 			return
 		}
 
@@ -98,31 +99,31 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+	httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Invalid credentials", nil)
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	// ユーザー登録の実装（必要に応じて）
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Registration not implemented yet"})
+	httpx.JSONError(c, http.StatusNotImplemented, httpx.CodeUnprocessable, "Registration not implemented yet", nil)
 }
 
 func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	// トークン検証の実装（必要に応じて）
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Token validation not implemented yet"})
+	httpx.JSONError(c, http.StatusNotImplemented, httpx.CodeUnprocessable, "Token validation not implemented yet", nil)
 }
 
 // ChangePassword パスワード変更
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	var req ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
 		return
 	}
 
 	// 現在のユーザーIDを取得（JWTから）
 	_, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "User not authenticated", nil)
 		return
 	}
 
@@ -136,14 +137,14 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 func (h *AuthHandler) ApproveUser(c *gin.Context) {
 	var req ApproveUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
@@ -163,7 +164,7 @@ func (h *AuthHandler) GetPendingUsers(c *gin.Context) {
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
