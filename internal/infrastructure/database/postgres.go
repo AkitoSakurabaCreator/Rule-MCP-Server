@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -26,6 +27,10 @@ type PostgresRuleOptionRepository struct {
 	DB *sql.DB
 }
 
+type PostgresRoleRepository struct {
+	DB *sql.DB
+}
+
 // Ensure PostgresDatabase implements ProjectRepository
 var _ domain.ProjectRepository = (*PostgresDatabase)(nil)
 
@@ -37,6 +42,9 @@ var _ domain.GlobalRuleRepository = (*PostgresGlobalRuleRepository)(nil)
 
 // Ensure PostgresRuleOptionRepository implements RuleOptionRepository
 var _ domain.RuleOptionRepository = (*PostgresRuleOptionRepository)(nil)
+
+// Ensure PostgresRoleRepository implements RoleRepository
+var _ domain.RoleRepository = (*PostgresRoleRepository)(nil)
 
 func NewPostgresDatabase(host, port, user, password, dbname string) (*PostgresDatabase, error) {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -65,6 +73,10 @@ func NewPostgresGlobalRuleRepository(db *sql.DB) *PostgresGlobalRuleRepository {
 
 func NewPostgresRuleOptionRepository(db *sql.DB) *PostgresRuleOptionRepository {
 	return &PostgresRuleOptionRepository{DB: db}
+}
+
+func NewPostgresRoleRepository(db *sql.DB) *PostgresRoleRepository {
+	return &PostgresRoleRepository{DB: db}
 }
 
 func (d *PostgresDatabase) Close() error {
@@ -280,6 +292,68 @@ func (r *PostgresRuleOptionRepository) Add(kind, value string) error {
 func (r *PostgresRuleOptionRepository) Delete(kind, value string) error {
 	query := `DELETE FROM rule_options WHERE kind = $1 AND value = $2`
 	_, err := r.DB.Exec(query, kind, value)
+	return mapDBError(err)
+}
+
+// RoleRepository implementation
+func (r *PostgresRoleRepository) GetAll() ([]domain.Role, error) {
+	query := `SELECT id, name, description, permissions, is_active FROM roles ORDER BY name`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, mapDBError(err)
+	}
+	defer rows.Close()
+	var roles []domain.Role
+	for rows.Next() {
+		var id int
+		var name, description string
+		var isActive bool
+		var permRaw []byte
+		if err := rows.Scan(&id, &name, &description, &permRaw, &isActive); err != nil {
+			return nil, mapDBError(err)
+		}
+		var perms map[string]bool
+		if len(permRaw) > 0 {
+			_ = json.Unmarshal(permRaw, &perms)
+		}
+		roles = append(roles, domain.Role{ID: id, Name: name, Description: description, Permissions: perms, IsActive: isActive})
+	}
+	return roles, nil
+}
+
+func (r *PostgresRoleRepository) GetByName(name string) (domain.Role, error) {
+	query := `SELECT id, name, description, permissions, is_active FROM roles WHERE name=$1`
+	var id int
+	var description string
+	var isActive bool
+	var permRaw []byte
+	if err := r.DB.QueryRow(query, name).Scan(&id, &name, &description, &permRaw, &isActive); err != nil {
+		return domain.Role{}, mapDBError(err)
+	}
+	var perms map[string]bool
+	if len(permRaw) > 0 {
+		_ = json.Unmarshal(permRaw, &perms)
+	}
+	return domain.Role{ID: id, Name: name, Description: description, Permissions: perms, IsActive: isActive}, nil
+}
+
+func (r *PostgresRoleRepository) Create(role domain.Role) error {
+	permJSON, _ := json.Marshal(role.Permissions)
+	query := `INSERT INTO roles (name, description, permissions, is_active) VALUES ($1, $2, $3, $4)`
+	_, err := r.DB.Exec(query, role.Name, role.Description, string(permJSON), role.IsActive)
+	return mapDBError(err)
+}
+
+func (r *PostgresRoleRepository) Update(name string, role domain.Role) error {
+	permJSON, _ := json.Marshal(role.Permissions)
+	query := `UPDATE roles SET description=$2, permissions=$3, is_active=$4, updated_at=NOW() WHERE name=$1`
+	_, err := r.DB.Exec(query, name, role.Description, string(permJSON), role.IsActive)
+	return mapDBError(err)
+}
+
+func (r *PostgresRoleRepository) Delete(name string) error {
+	query := `DELETE FROM roles WHERE name = $1`
+	_, err := r.DB.Exec(query, name)
 	return mapDBError(err)
 }
 
