@@ -103,8 +103,35 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
-	// ユーザー登録の実装（必要に応じて）
-	httpx.JSONError(c, http.StatusNotImplemented, httpx.CodeUnprocessable, "Registration not implemented yet", nil)
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Email    string `json:"email" binding:"required"`
+		FullName string `json:"full_name"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		return
+	}
+
+	// 簡易実装: ここでは即時にJWTを発行（DB保存は次段で拡張）
+	claims := Claims{
+		UserID:   0,
+		Username: req.Username,
+		Role:     "user",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(h.jwtSecret)
+	if err != nil {
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "トークン生成に失敗しました", nil)
+		return
+	}
+	c.JSON(http.StatusOK, LoginResponse{Token: tokenString, User: User{ID: 0, Username: req.Username, Email: req.Email, Role: "user"}, Message: "Registration successful"})
 }
 
 func (h *AuthHandler) ValidateToken(c *gin.Context) {
@@ -176,4 +203,21 @@ func (h *AuthHandler) GetPendingUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, pendingUsers)
+}
+
+// Me 現在のユーザー情報
+func (h *AuthHandler) Me(c *gin.Context) {
+	auth := c.GetHeader("Authorization")
+	if len(auth) <= 7 {
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Unauthorized", nil)
+		return
+	}
+	tokenStr := auth[7:]
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) { return h.jwtSecret, nil })
+	if err != nil || !token.Valid {
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Invalid token", nil)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"id": 0, "username": claims.Username, "email": "", "full_name": "", "role": claims.Role, "is_active": true})
 }

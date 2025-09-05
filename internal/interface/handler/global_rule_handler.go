@@ -37,6 +37,11 @@ func (h *GlobalRuleHandler) GetGlobalRules(c *gin.Context) {
 }
 
 func (h *GlobalRuleHandler) CreateGlobalRule(c *gin.Context) {
+	// 権限チェック（manage_rules）
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
+		return
+	}
 	var req struct {
 		Language    string `json:"language" binding:"required"`
 		RuleID      string `json:"rule_id" binding:"required"`
@@ -63,6 +68,11 @@ func (h *GlobalRuleHandler) CreateGlobalRule(c *gin.Context) {
 }
 
 func (h *GlobalRuleHandler) DeleteGlobalRule(c *gin.Context) {
+	// 権限チェック（manage_rules）
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
+		return
+	}
 	language := c.Param("language")
 	ruleID := c.Param("rule_id")
 

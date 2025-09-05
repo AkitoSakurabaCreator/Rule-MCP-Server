@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
@@ -15,6 +16,7 @@ type MCPHandler struct {
 	ruleUseCase       *usecase.RuleUseCase
 	globalRuleUseCase *usecase.GlobalRuleUseCase
 	projectDetector   *usecase.ProjectDetector
+	metricsRepo       domain.MetricsRepository
 }
 
 func NewMCPHandler(ruleUseCase *usecase.RuleUseCase, globalRuleUseCase *usecase.GlobalRuleUseCase, projectDetector *usecase.ProjectDetector) *MCPHandler {
@@ -22,6 +24,22 @@ func NewMCPHandler(ruleUseCase *usecase.RuleUseCase, globalRuleUseCase *usecase.
 		ruleUseCase:       ruleUseCase,
 		globalRuleUseCase: globalRuleUseCase,
 		projectDetector:   projectDetector,
+	}
+}
+
+// SetMetricsRepo メトリクスリポジトリを注入
+func (h *MCPHandler) SetMetricsRepo(repo domain.MetricsRepository) {
+	h.metricsRepo = repo
+}
+
+func (h *MCPHandler) withMetrics(method string, handler func() error) {
+	start := time.Now()
+	status := "ok"
+	if err := handler(); err != nil {
+		status = "error"
+	}
+	if h.metricsRepo != nil {
+		_ = h.metricsRepo.RecordMCP(method, status, int(time.Since(start)/time.Millisecond))
 	}
 }
 
@@ -35,17 +53,17 @@ func (h *MCPHandler) HandleMCPRequest(c *gin.Context) {
 
 	switch req.Method {
 	case "tools/list":
-		h.handleToolsList(c, req)
+		h.withMetrics("tools/list", func() error { h.handleToolsList(c, req); return nil })
 	case "getRules":
-		h.handleGetRules(c, req)
+		h.withMetrics("getRules", func() error { h.handleGetRules(c, req); return nil })
 	case "validateCode":
-		h.handleValidateCode(c, req)
+		h.withMetrics("validateCode", func() error { h.handleValidateCode(c, req); return nil })
 	case "getProjectInfo":
-		h.handleGetProjectInfo(c, req)
+		h.withMetrics("getProjectInfo", func() error { h.handleGetProjectInfo(c, req); return nil })
 	case "autoDetectProject":
-		h.handleAutoDetectProject(c, req)
+		h.withMetrics("autoDetectProject", func() error { h.handleAutoDetectProject(c, req); return nil })
 	case "scanLocalProjects":
-		h.handleScanLocalProjects(c, req)
+		h.withMetrics("scanLocalProjects", func() error { h.handleScanLocalProjects(c, req); return nil })
 	default:
 		h.sendMCPError(c, req.ID, mcpx.CodeNotFound, "Method not found: "+req.Method)
 	}
