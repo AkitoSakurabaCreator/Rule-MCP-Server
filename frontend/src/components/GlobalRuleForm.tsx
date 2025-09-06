@@ -139,17 +139,18 @@ const GlobalRuleForm: React.FC = () => {
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             multiline
-            rows={3}
-            helperText={t('globalRules.descriptionHelp')}
+            rows={4}
+            helperText="ルールの概要や目的を説明してください。開発者が理解しやすいように具体的に記述してください。"
+            placeholder="例: JavaScript/TypeScriptファイル向けの基本的な命名規則とスタイルガイド"
           />
 
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField
               select
-              label={t('rules.type')}
+              label="ルールタイプ"
               value={formData.type}
               onChange={(e) => handleChange('type', e.target.value)}
-              helperText={t('globalRules.typeHelp')}
+              helperText="ルールの種類を選択してください。style（スタイル）、security（セキュリティ）、performance（パフォーマンス）など"
               sx={{ flex: 1 }}
             >
               {typeOptions.map((v) => (
@@ -167,10 +168,10 @@ const GlobalRuleForm: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField
               select
-              label={t('rules.severity')}
+              label="重要度"
               value={formData.severity}
               onChange={(e) => handleChange('severity', e.target.value)}
-              helperText={t('globalRules.severityHelp')}
+              helperText="ルール違反の重要度を選択してください。error（エラー）、warning（警告）、info（情報）"
               sx={{ flex: 1 }}
             >
               {severityOptions.map((v) => (
@@ -186,19 +187,28 @@ const GlobalRuleForm: React.FC = () => {
           </Box>
 
           <TextField
-            label={t('rules.pattern')}
+            label="検索パターン"
             value={formData.pattern}
             onChange={(e) => handleChange('pattern', e.target.value)}
-            helperText={t('globalRules.patternHelp')}
+            helperText="ルール違反を検出するためのパターンを指定してください。正規表現や文字列パターンが使用できます。空でも構いません。"
+            placeholder="例: console.log, function_name, api_key"
           />
 
           <TextField
-            label={t('rules.message')}
+            label="ルール内容"
             value={formData.message}
             onChange={(e) => handleChange('message', e.target.value)}
             multiline
-            rows={2}
-            helperText={t('globalRules.messageHelp')}
+            rows={6}
+            helperText="ルールの詳細な内容を記述してください。開発者にとって分かりやすく、修正方法も含めてください。Frontmatter形式（---で囲む）も使用できます。"
+            placeholder={`例:
+---
+description: JavaScript/TypeScriptファイル向けの基本的な命名規則とスタイルガイド
+globs: "**/*.{js,ts,jsx,tsx}"
+---
+- 変数名とプロパティ名はキャメルケース（camelCase）を使用してください。
+- 関数名やメソッド名は、処理内容を表す動詞から始めてください。
+- 定数は大文字スネークケース（UPPER_SNAKE_CASE）で定義してください。`}
           />
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>

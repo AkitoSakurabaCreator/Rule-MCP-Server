@@ -198,21 +198,22 @@ const RuleEdit: React.FC = () => {
               <TextField
                 fullWidth
                 multiline
-                rows={3}
+                rows={4}
                 label={t('rules.description')}
                 value={rule.description || ''}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                helperText={t('rules.descriptionHelp')}
+                helperText="ルールの概要や目的を説明してください。開発者が理解しやすいように具体的に記述してください。"
+                placeholder="例: JavaScript/TypeScriptファイル向けの基本的な命名規則とスタイルガイド"
               />
             </Grid>
 
             <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
               <FormControl fullWidth required>
-                <InputLabel>{t('rules.type')}</InputLabel>
+                <InputLabel>ルールタイプ</InputLabel>
                 <Select
                   value={rule.type || ''}
                   onChange={(e) => handleInputChange('type', e.target.value)}
-                  label={t('rules.type')}
+                  label="ルールタイプ"
                 >
                   {typeOptions.map((v) => (
                     <MenuItem key={v} value={v}>{v}</MenuItem>
@@ -236,11 +237,11 @@ const RuleEdit: React.FC = () => {
 
             <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
               <FormControl fullWidth required>
-                <InputLabel>{t('rules.severity')}</InputLabel>
+                <InputLabel>重要度</InputLabel>
                 <Select
                   value={rule.severity || ''}
                   onChange={(e) => handleInputChange('severity', e.target.value)}
-                  label={t('rules.severity')}
+                  label="重要度"
                 >
                   {severityOptions.map((v) => (
                     <MenuItem key={v} value={v}>{v}</MenuItem>
@@ -292,25 +293,11 @@ const RuleEdit: React.FC = () => {
             <Grid sx={{ width: '100%' }}>
               <TextField
                 fullWidth
-                label={t('rules.pattern')}
+                label="検索パターン"
                 value={rule.pattern || ''}
                 onChange={(e) => handleInputChange('pattern', e.target.value)}
-                helperText={
-                  <Box>
-                    <Typography variant="body2" component="span">
-                      {t('rules.patternHelp')}
-                    </Typography>
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" component="div" color="text.secondary">
-                        <strong>例:</strong> console\.log, TODO:, api_key, SELECT * FROM
-                      </Typography>
-                      <Typography variant="caption" component="div" color="text.secondary">
-                        <strong>ヒント:</strong> 特殊文字は \ でエスケープしてください
-                      </Typography>
-                    </Box>
-                  </Box>
-                }
-                placeholder="例: console\\.log"
+                helperText="ルール違反を検出するためのパターンを指定してください。正規表現や文字列パターンが使用できます。空でも構いません。"
+                placeholder="例: console.log, function_name, api_key"
               />
             </Grid>
 
@@ -318,26 +305,19 @@ const RuleEdit: React.FC = () => {
               <TextField
                 fullWidth
                 multiline
-                rows={2}
-                label={t('rules.message')}
+                rows={6}
+                label="ルール内容"
                 value={rule.message || ''}
                 onChange={(e) => handleInputChange('message', e.target.value)}
-                helperText={
-                  <Box>
-                    <Typography variant="body2" component="span">
-                      {t('rules.messageHelp')}
-                    </Typography>
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" component="div" color="text.secondary">
-                        <strong>例:</strong> Console.log detected. Use proper logging framework in production.
-                      </Typography>
-                      <Typography variant="caption" component="div" color="text.secondary">
-                        <strong>ヒント:</strong> 開発者にとって分かりやすく、修正方法も含めてください
-                      </Typography>
-                    </Box>
-                  </Box>
-                }
-                placeholder="例: Console.log detected. Use proper logging framework in production."
+                helperText="ルールの詳細な内容を記述してください。開発者にとって分かりやすく、修正方法も含めてください。Frontmatter形式（---で囲む）も使用できます。"
+                placeholder={`例:
+---
+description: JavaScript/TypeScriptファイル向けの基本的な命名規則とスタイルガイド
+globs: "**/*.{js,ts,jsx,tsx}"
+---
+- 変数名とプロパティ名はキャメルケース（camelCase）を使用してください。
+- 関数名やメソッド名は、処理内容を表す動詞から始めてください。
+- 定数は大文字スネークケース（UPPER_SNAKE_CASE）で定義してください。`}
               />
             </Grid>
           </Grid>
