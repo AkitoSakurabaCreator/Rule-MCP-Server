@@ -168,11 +168,7 @@ INSERT INTO users (username, email, full_name, role, password_hash) VALUES
     ('admin', 'admin@rulemcp.com', 'System Administrator', 'admin', '$2a$10$.zED/crcQ.p9trkDD1RYs.9gkSuZ6rLdp0LwGQg4m01J.JNFvs9H2')
 ON CONFLICT (username) DO NOTHING;
 
--- Insert sample users
-INSERT INTO users (username, email, full_name, role) VALUES
-    ('developer1', 'dev1@example.com', 'Developer 1', 'user'),
-    ('developer2', 'dev2@example.com', 'Developer 2', 'user')
-ON CONFLICT (username) DO NOTHING;
+-- Sample users removed - only admin account is created by default
 
 -- Insert sample API keys (hashed values - in production, use proper hashing)
 INSERT INTO api_keys (key_hash, name, description, access_level, created_by) VALUES
@@ -181,11 +177,7 @@ INSERT INTO api_keys (key_hash, name, description, access_level, created_by) VAL
     ('public_key_hash_789', 'Public API Key', 'Public read-only access', 'public', 'admin')
 ON CONFLICT (key_hash) DO NOTHING;
 
--- Insert project members
-INSERT INTO project_members (project_id, user_id, role, permissions) VALUES
-    ('team-project', 2, 'member', '{"read": true, "write": true, "delete": false}'),
-    ('team-project', 3, 'member', '{"read": true, "write": true, "delete": false}')
-ON CONFLICT (project_id, user_id) DO NOTHING;
+-- Project members will be added through the admin interface
 
 -- Insert global rules for different languages
 INSERT INTO global_rules (language, rule_id, name, description, type, severity, pattern, message, access_level, created_by) VALUES
