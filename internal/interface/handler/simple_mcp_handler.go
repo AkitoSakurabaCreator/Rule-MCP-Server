@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/domain"
 )
 
 type SimpleMCPHandler struct{}

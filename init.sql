@@ -12,6 +12,17 @@ CREATE TABLE IF NOT EXISTS projects (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS languages (
+    code VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    icon VARCHAR(100),
+    color VARCHAR(20),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS global_rules (
     id SERIAL PRIMARY KEY,
     language VARCHAR(50) NOT NULL,
@@ -49,6 +60,29 @@ CREATE TABLE IF NOT EXISTS rules (
     UNIQUE(project_id, rule_id)
 );
 
+-- Dynamic rule options (types / severities)
+CREATE TABLE IF NOT EXISTS rule_options (
+    id SERIAL PRIMARY KEY,
+    kind VARCHAR(50) NOT NULL, -- 'type' | 'severity'
+    value VARCHAR(100) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(kind, value)
+);
+
+-- Seed default options if not present
+INSERT INTO rule_options (kind, value)
+    VALUES
+    ('type', 'style'),
+    ('type', 'security'),
+    ('type', 'performance'),
+    ('type', 'naming'),
+    ('type', 'formatting'),
+    ('severity', 'error'),
+    ('severity', 'warning'),
+    ('severity', 'info')
+ON CONFLICT (kind, value) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS rule_violations (
     id SERIAL PRIMARY KEY,
     project_id VARCHAR(100) NOT NULL,
@@ -84,9 +118,29 @@ CREATE TABLE IF NOT EXISTS users (
     full_name VARCHAR(255),
     role VARCHAR(20) NOT NULL DEFAULT 'user',
     is_active BOOLEAN DEFAULT true,
+    password_hash TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Roles master for dynamic role management
+CREATE TABLE IF NOT EXISTS roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    permissions JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed default roles
+INSERT INTO roles (name, description, permissions)
+VALUES
+    ('admin', 'Administrator role with full permissions', '{"admin": true, "manage_users": true, "manage_rules": true, "manage_roles": true}'),
+    ('user', 'Standard user role', '{"admin": false, "manage_users": false, "manage_rules": true, "manage_roles": false}'),
+    ('public', 'Public read-only role', '{"admin": false, "manage_users": false, "manage_rules": false, "manage_roles": false}')
+ON CONFLICT (name) DO NOTHING;
 
 -- Create project_members table for team access control
 CREATE TABLE IF NOT EXISTS project_members (
@@ -110,8 +164,8 @@ INSERT INTO projects (project_id, name, description, language, apply_global_rule
 ON CONFLICT (project_id) DO NOTHING;
 
 -- Insert initial admin account (default password: admin123)
-INSERT INTO users (username, email, full_name, role) VALUES
-    ('admin', 'admin@rulemcp.com', 'System Administrator', 'admin')
+INSERT INTO users (username, email, full_name, role, password_hash) VALUES
+    ('admin', 'admin@rulemcp.com', 'System Administrator', 'admin', '$2a$10$.zED/crcQ.p9trkDD1RYs.9gkSuZ6rLdp0LwGQg4m01J.JNFvs9H2')
 ON CONFLICT (username) DO NOTHING;
 
 -- Insert sample users
@@ -146,6 +200,21 @@ INSERT INTO global_rules (language, rule_id, name, description, type, severity, 
     ('typescript', 'strict-null-checks', 'Strict Null Checks', 'Enable strict null checks for better type safety', 'quality', 'warning', 'strictNullChecks', 'Enable strict null checks in tsconfig.json', 'user', 'admin')
 ON CONFLICT (language, rule_id) DO NOTHING;
 
+INSERT INTO languages (code, name, description, icon, color) VALUES
+    ('javascript', 'JavaScript', 'JavaScript programming language', 'js', '#f7df1e'),
+    ('typescript', 'TypeScript', 'TypeScript programming language', 'ts', '#3178c6'),
+    ('python', 'Python', 'Python programming language', 'py', '#3776ab'),
+    ('go', 'Go', 'Go programming language', 'go', '#00add8'),
+    ('java', 'Java', 'Java programming language', 'java', '#ed8b00'),
+    ('cpp', 'C++', 'C++ programming language', 'cpp', '#00599c'),
+    ('csharp', 'C#', 'C# programming language', 'cs', '#239120'),
+    ('php', 'PHP', 'PHP programming language', 'php', '#777bb4'),
+    ('ruby', 'Ruby', 'Ruby programming language', 'rb', '#cc342d'),
+    ('rust', 'Rust', 'Rust programming language', 'rs', '#000000'),
+    ('swift', 'Swift', 'Swift programming language', 'swift', '#fa7343'),
+    ('kotlin', 'Kotlin', 'Kotlin programming language', 'kt', '#7f52ff')
+ON CONFLICT (code) DO NOTHING;
+
 INSERT INTO rules (project_id, rule_id, name, description, type, severity, pattern, message, access_level, created_by) VALUES
     ('default', 'no-hardcoded-secrets', 'No Hardcoded Secrets', 'API keys, passwords, and other secrets should not be hardcoded in source code', 'security', 'error', 'api_key', 'Hardcoded API key detected. Use environment variables instead.', 'public', 'system'),
     ('default', 'no-sql-injection', 'No SQL Injection', 'Raw SQL queries should not be constructed by string concatenation', 'security', 'error', 'SELECT * FROM', 'Raw SQL query detected. Use parameterized queries or ORM.', 'public', 'system'),
@@ -165,3 +234,22 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON api_keys(key_hash);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_project_members_project_id ON project_members(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_members_user_id ON project_members(user_id);
+
+-- Settings key-value store
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Track MCP requests for metrics
+CREATE TABLE IF NOT EXISTS mcp_requests (
+    id SERIAL PRIMARY KEY,
+    method VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL, -- ok | error
+    duration_ms INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcp_requests_created_at ON mcp_requests(created_at);
+CREATE INDEX IF NOT EXISTS idx_mcp_requests_method ON mcp_requests(method);

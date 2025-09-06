@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -34,13 +34,7 @@ const ProjectForm: React.FC = () => {
 
   const isEditMode = Boolean(projectId);
 
-  useEffect(() => {
-    if (isEditMode && projectId) {
-      loadProject(projectId);
-    }
-  }, [isEditMode, projectId]);
-
-  const loadProject = async (id: string) => {
+  const loadProject = useCallback(async (id: string) => {
     try {
       const response = await api.get(`/projects/${id}`);
       const project: Project = response.data;
@@ -55,7 +49,13 @@ const ProjectForm: React.FC = () => {
       setError(t('common.error'));
       console.error('Failed to load project:', error);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    if (isEditMode && projectId) {
+      loadProject(projectId);
+    }
+  }, [isEditMode, projectId, loadProject]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,10 +1,10 @@
 package usecase
 
 import (
-	"errors"
 	"time"
 
-	"github.com/AkitoSakurabaCreator/RuleMCPServer/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/apperr"
 )
 
 type ProjectUseCase struct {
@@ -19,7 +19,7 @@ func NewProjectUseCase(projectRepo domain.ProjectRepository) *ProjectUseCase {
 
 func (uc *ProjectUseCase) CreateProject(projectID, name, description, language string, applyGlobalRules bool) error {
 	if projectID == "" || name == "" {
-		return errors.New("project_id and name are required")
+		return apperr.WrapWithDetails(apperr.ErrValidation, "入力値が不正です", map[string]interface{}{"missing": []string{"project_id", "name"}})
 	}
 
 	project := &domain.Project{

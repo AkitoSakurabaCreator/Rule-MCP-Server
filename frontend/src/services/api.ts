@@ -26,7 +26,29 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    const data = error.response?.data;
+    // Backend unified error shape: { code, message, details?, requestId?, timestamp }
+    const unified = {
+      code: data?.code ?? 'unknown_error',
+      message: data?.message ?? error.message ?? 'エラーが発生しました',
+      details: data?.details,
+      requestId: data?.requestId,
+      status: error.response?.status,
+    } as const;
+
+    // Optional: console diagnostics for developers
+    if (unified.requestId) {
+      console.error(`[API Error] ${unified.code}: ${unified.message} (reqId=${unified.requestId})`, unified.details);
+    } else {
+      console.error(`[API Error] ${unified.code}: ${unified.message}`, unified.details);
+    }
+
+    // Attach normalized error for UI layers
+    (error as any).normalized = unified;
+
+    // Example UX hooks (callers can use):
+    // if (unified.code === 'unauthorized') redirectToLogin();
+
     return Promise.reject(error);
   }
 );

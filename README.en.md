@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A MCP (Model Context Protocol) server that allows AI agents (Cursor, Cline) to retrieve and apply common coding rules.
+A MCP (Model Context Protocol) server that allows AI agents (Cursor, Claude Code, Cline) to retrieve and apply common coding rules.
 
 ## Features
 
@@ -17,6 +17,89 @@ A MCP (Model Context Protocol) server that allows AI agents (Cursor, Cline) to r
 - **Multi-language support (i18n)**: English, Japanese, Chinese, Hindi, Spanish, Arabic
 - **Dark theme support**: Light/Dark mode toggle
 - **Clean Architecture** for high maintainability
+
+## 🚀 Quick Start
+
+### 1. Install MCP Server
+
+```bash
+# Via pnpm dlx (recommended, no installation required)
+pnpm dlx rule-mcp-server
+
+# Or global installation
+pnpm add -g rule-mcp-server
+```
+
+### 2. Configure AI Agent
+
+#### Cursor
+```bash
+# Copy configuration template
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
+```
+
+#### Claude Code
+```bash
+# Add MCP server to Claude Code (stdio)
+claude mcp add rule-mcp-server --env RULE_SERVER_URL=http://localhost:18080 -- pnpm dlx rule-mcp-server
+
+# With API key
+claude mcp add rule-mcp-server \
+  --env RULE_SERVER_URL=http://localhost:18080 \
+  --env MCP_API_KEY=your_api_key \
+  -- pnpm dlx rule-mcp-server
+
+# Reference: Anthropic official docs
+# https://docs.anthropic.com/ja/docs/claude-code/mcp
+```
+
+### 3. Start Using!
+
+Restart your AI agent (Cursor/Claude Code) and it will automatically retrieve and apply coding rules.
+
+**📦 npm package**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
+
+Note: `MCP_API_KEY` is optional (Public access works without it). Set it only for team operations or when using management APIs.
+
+### Server Requirement and Startup (Important)
+
+The MCP client configuration assumes the backend Rule MCP Server is running.
+
+#### Health Check
+```bash
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} means the server is running
+```
+
+#### If the server is not running (Local via Docker)
+```bash
+# Get the repository
+git clone https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git
+cd Rule-MCP-Server
+
+# Start with Docker (recommended)
+docker compose up -d
+
+# Stop
+docker compose down
+```
+
+#### LAN exposure example (team operation)
+- Start the server on a host in your LAN and set the client env to the LAN IP:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "env": {
+        "RULE_SERVER_URL": "http://192.168.1.20:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      }
+    }
+  }
+}
+```
+
+Note: With Makefile, you can use `make docker-up` / `make docker-down`.
 
 ## Tech Stack
 
@@ -680,23 +763,6 @@ refactor: improve error handling in MCP handlers
 - **Type Safety**: Use TypeScript type definitions appropriately
 - **Error Handling**: Appropriate error messages and log output
 
-## 📈 Roadmap
-
-### v1.1.0 (Planned)
-- [ ] **Kubernetes Support**: Helm Chart provision
-- [ ] **Metrics**: Prometheus/Grafana integration
-- [ ] **Plugin System**: Custom rule extensions
-
-### v1.2.0 (Planned)
-- [ ] **AI Integration**: GPT-4 automatic rule generation
-- [ ] **IDE Extension**: VS Code Extension
-- [ ] **Cloud Support**: AWS/GCP/Azure support
-
-### v2.0.0 (Planned)
-- [ ] **Distributed Architecture**: Microservices
-- [ ] **Real-time Collaboration**: WebSocket utilization
-- [ ] **Machine Learning**: Rule recommendation system
-
 ## 🏆 Community
 
 ### Contributors
@@ -727,14 +793,43 @@ MIT License - See [LICENSE](LICENSE) file for details.
 ### Documentation
 
 - **📚 Detailed Documentation**: [GitHub Wiki](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/wiki)
-- **🎥 Tutorials**: [YouTube Playlist](https://youtube.com/playlist?list=...)
-- **📖 API Reference**: [API Docs](https://api-docs.rulemcp.com)
 
 ### Community
 
-- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/...)
-- **🐦 Twitter**: [@RuleMCPServer](https://twitter.com/RuleMCPServer)
-- **📧 Mailing List**: [Google Groups](https://groups.google.com/g/rule-mcp-server)
+- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/dCAUC8m6dw)
+- **🐦 X (formerly Twitter)**: [@_sakuraba_akito](https://x.com/_sakuraba_akito)
+
+### Project Support
+
+- **💖 Sponsor**: [GitHub Sponsors](https://github.com/sponsors/AkitoSakurabaCreator)
+
+## 📋 Contributing Guidelines
+
+### Contribution Flow
+
+1. **Create Issue**: Bug reports or feature proposals
+2. **Fork**: Fork the repository
+3. **Create Branch**: `feature/your-feature` or `fix/your-fix`
+4. **Development**: Code changes and test additions
+5. **Pull Request**: Submit with detailed description
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## 📜 License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+## 🔒 Security
+
+If you discover a security issue, please follow the instructions in [SECURITY.md](SECURITY.md).
+
+## 📝 Code of Conduct
+
+This project follows the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## 📈 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the latest changes.
 
 ---
 

@@ -10,6 +10,12 @@ interface User {
   is_active: boolean;
 }
 
+interface Permissions {
+  manageUsers: boolean;
+  manageRules: boolean;
+  manageRoles: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -18,6 +24,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   refreshUser: () => Promise<void>;
+  permissions: Permissions;
 }
 
 interface RegisterData {
@@ -46,6 +53,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const isAuthenticated = !!user;
+  const permissions: Permissions = {
+    manageUsers: user?.role === 'admin',
+    manageRules: user?.role === 'admin' || user?.role === 'user',
+    manageRoles: user?.role === 'admin',
+  };
 
   useEffect(() => {
     // 初期化時にユーザー情報を取得
@@ -145,6 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     register,
     refreshUser,
+    permissions,
   };
 
   return (

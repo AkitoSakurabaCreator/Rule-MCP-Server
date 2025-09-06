@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Card,
@@ -22,6 +22,14 @@ import {
   MenuItem,
   Tabs,
   Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
+  Tooltip,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -33,7 +41,10 @@ import {
   Analytics as AnalyticsIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useTranslation } from 'react-i18next';
+import { adminApi, AdminStats as AdminStatsType, MCPStats as MCPStatsType, SystemLog as SystemLogType, Role as RoleType } from '../../services/adminApi';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -62,7 +73,7 @@ interface User {
   username: string;
   email: string;
   role: string;
-  status: string;
+  status?: string;
   lastLogin: string;
 }
 
@@ -78,67 +89,146 @@ interface ApiKey {
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation();
+  const { permissions } = useAuth();
+  const canManageUsers = permissions.manageUsers;
+  const canManageRoles = permissions.manageRoles;
   const [tabValue, setTabValue] = useState(0);
-  const [users] = useState<User[]>([
-    {
-      id: 1,
-      username: 'admin',
-      email: 'admin@example.com',
-      role: 'admin',
-      status: 'active',
-      lastLogin: '2024-01-15 14:30:15',
-    },
-    {
-      id: 2,
-      username: 'user1',
-      email: 'user1@example.com',
-      role: 'user',
-      status: 'active',
-      lastLogin: '2024-01-15 13:45:22',
-    },
-    {
-      id: 3,
-      username: 'user2',
-      email: 'user2@example.com',
-      role: 'user',
-      status: 'inactive',
-      lastLogin: '2024-01-14 16:20:10',
-    },
-  ]);
-
-  const [apiKeys] = useState<ApiKey[]>([
-    {
-      id: 1,
-      name: 'Admin API Key',
-      key: 'admin_key_123',
-      accessLevel: 'admin',
-      status: 'active',
-      createdAt: '2024-01-01',
-      lastUsed: '2024-01-15 14:30:15',
-    },
-    {
-      id: 2,
-      name: 'User API Key',
-      key: 'user_key_456',
-      accessLevel: 'user',
-      status: 'expired',
-      createdAt: '2024-01-10',
-      lastUsed: '2024-01-15 10:15:30',
-    },
-  ]);
-
-  const stats = {
-    totalUsers: users.length,
-    totalProjects: 15,
-    totalRules: 89,
-    activeApiKeys: apiKeys.filter(key => key.status === 'active').length,
-    mcpRequests: 1234,
-    activeSessions: 8,
-    systemLoad: '23%',
+  const [users, setUsers] = useState<User[]>([]);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [stats, setStats] = useState<AdminStatsType>({
+    totalUsers: 0,
+    totalProjects: 0,
+    totalRules: 0,
+    activeApiKeys: 0,
+    mcpRequests: 0,
+    activeSessions: 0,
+    systemLoad: '0%',
+  });
+  const [mcpStats, setMcpStats] = useState<MCPStatsType[]>([]);
+  const [mcpPerf, setMcpPerf] = useState<{ avgMs: number; successRate: number; errorRate: number; p95Ms: number }>({ avgMs: 0, successRate: 0, errorRate: 0, p95Ms: 0 });
+  const [languages, setLanguages] = useState<{ code: string; name: string; description?: string; icon?: string; color?: string; isActive?: boolean }[]>([]);
+  const [openAddLanguage, setOpenAddLanguage] = useState(false);
+  const [editLanguageCode, setEditLanguageCode] = useState<string | null>(null);
+  const [languageForm, setLanguageForm] = useState<{ code: string; name: string; description: string; icon: string; color: string; isActive: boolean }>({ code: '', name: '', description: '', icon: '', color: '#007acc', isActive: true });
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [systemLogs, setSystemLogs] = useState<SystemLogType[]>([]);
+  const [logCounts, setLogCounts] = useState<{ INFO: number; WARN: number; ERROR: number }>({ INFO: 0, WARN: 0, ERROR: 0 });
+  const [openAddUser, setOpenAddUser] = useState(false);
+  const [openEditUser, setOpenEditUser] = useState<null | User>(null);
+  const [userForm, setUserForm] = useState({
+    username: '',
+    email: '',
+    fullName: '',
+    role: 'user',
+    isActive: true,
+  });
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+  const [openAddApiKey, setOpenAddApiKey] = useState(false);
+  const [apiKeyForm, setApiKeyForm] = useState({ name: '', accessLevel: 'user' });
+  const [openDeleteApiKey, setOpenDeleteApiKey] = useState<null | ApiKey>(null);
+  const [openEditApiKey, setOpenEditApiKey] = useState<null | ApiKey>(null);
+  const [apiKeyEditForm, setApiKeyEditForm] = useState<{ name: string; description: string; isActive: boolean }>({ name: '', description: '', isActive: true });
+  const [roles, setRoles] = useState<RoleType[]>([]);
+  const [openAddRole, setOpenAddRole] = useState(false);
+  const [openEditRole, setOpenEditRole] = useState<null | RoleType>(null);
+  const [roleForm, setRoleForm] = useState<RoleType>({ name: '', description: '', permissions: { manage_users: false, manage_rules: true, manage_roles: false }, is_active: true });
+  const applyPreset = (preset: 'readonly' | 'editor' | 'admin') => {
+    if (preset === 'readonly') setRoleForm((r) => ({ ...r, permissions: { manage_users: false, manage_rules: false, manage_roles: false } }));
+    if (preset === 'editor') setRoleForm((r) => ({ ...r, permissions: { manage_users: false, manage_rules: true, manage_roles: false } }));
+    if (preset === 'admin') setRoleForm((r) => ({ ...r, permissions: { manage_users: true, manage_rules: true, manage_roles: true } }));
   };
 
+  // 設定状態
+  const [settings, setSettings] = useState<{ defaultAccessLevel: string; requestsPerMinute: number }>({ defaultAccessLevel: 'public', requestsPerMinute: 100 });
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [s, u, k, m, logs, perf, conf, langs] = await Promise.all([
+          adminApi.getStats(),
+          canManageUsers ? adminApi.getUsers() : Promise.resolve([]),
+          adminApi.getApiKeys(),
+          adminApi.getMCPStats(),
+          adminApi.getSystemLogs(),
+          adminApi.getMCPPerformance(),
+          adminApi.getSettings(),
+          adminApi.getLanguages(),
+        ]);
+        const rls = canManageRoles ? await adminApi.getRoles() : [];
+        if (!mounted) return;
+        setStats(s);
+        setUsers(
+          (u as any[]).map((x: any) => ({
+            id: x.id,
+            username: x.username,
+            email: x.email,
+            role: x.role,
+            status: x.isActive ? 'active' : 'inactive',
+            lastLogin: x.lastLogin,
+          }))
+        );
+        setApiKeys(k as unknown as ApiKey[]);
+        setMcpStats(m);
+        setSystemLogs(Array.isArray(logs) ? logs : []);
+        // 集計（INFO/WARN/ERROR）
+        const counts = (Array.isArray(logs) ? logs : []).reduce((acc: any, l: any) => {
+          const level = (l.level || '').toUpperCase();
+          if (level === 'WARN') acc.WARN += 1;
+          else if (level === 'ERROR') acc.ERROR += 1;
+          else acc.INFO += 1;
+          return acc;
+        }, { INFO: 0, WARN: 0, ERROR: 0 });
+        setLogCounts(counts);
+        setRoles(rls);
+        // MCP perf
+        setMcpPerf(perf as any);
+        // settings
+        const da = (conf as any).defaultAccessLevel || 'public';
+        const rpm = parseInt((conf as any).requestsPerMinute || '100', 10) || 100;
+        setSettings({ defaultAccessLevel: da, requestsPerMinute: rpm });
+        setLanguages(Array.isArray(langs) ? langs : []);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load admin data');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [canManageUsers, canManageRoles]);
+
+  // CPU率（systemLoad）とMCPパフォーマンスを定期更新（5秒間隔）
+  useEffect(() => {
+    let timer: any;
+    const tick = async () => {
+      try {
+        const s = await adminApi.getStats();
+        setStats(s);
+        const perf = await adminApi.getMCPPerformance();
+        setMcpPerf(perf as any);
+      } catch (e: any) {
+        // ignore transient errors
+      }
+    };
+    // 初回即時 + 5秒間隔
+    tick();
+    timer = setInterval(tick, 5000);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, []);
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    console.log('Tab changed to:', newValue);
     setTabValue(newValue);
   };
 
@@ -147,6 +237,17 @@ const AdminDashboard: React.FC = () => {
       <Typography variant="h4" sx={{ mb: 3 }}>
         {t('dashboard.title')}
       </Typography>
+
+      {loading && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t('common.loading')}
+        </Typography>
+      )}
+      {error && (
+        <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
 
       {/* 統計カード */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -284,6 +385,17 @@ const AdminDashboard: React.FC = () => {
             label={t('dashboard.systemLogs')} 
             iconPosition="start"
           />
+          <Tab 
+            icon={<SecurityIcon />} 
+            label={t('dashboard.roles') || 'Roles'} 
+            disabled={!canManageRoles}
+            iconPosition="start"
+          />
+          <Tab 
+            icon={<CodeIcon />} 
+            label={t('dashboard.languages') || 'Languages'} 
+            iconPosition="start"
+          />
         </Tabs>
       </Box>
 
@@ -293,9 +405,18 @@ const AdminDashboard: React.FC = () => {
           <Typography variant="h5">
             {t('dashboard.userManagement')}
           </Typography>
-          <Button variant="contained" startIcon={<AddIcon />}>
+          {canManageUsers && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setUserForm({ username: '', email: '', fullName: '', role: 'user', isActive: true });
+              setOpenAddUser(true);
+            }}
+          >
             {t('dashboard.addUser')}
           </Button>
+          )}
         </Box>
         
         <TableContainer component={Paper}>
@@ -307,7 +428,7 @@ const AdminDashboard: React.FC = () => {
                 <TableCell>{t('dashboard.role')}</TableCell>
                 <TableCell>{t('dashboard.status')}</TableCell>
                 <TableCell>{t('dashboard.lastLogin')}</TableCell>
-                <TableCell>{t('dashboard.actions')}</TableCell>
+                {canManageUsers && <TableCell>{t('dashboard.actions')}</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -323,26 +444,144 @@ const AdminDashboard: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip 
-                      label={user.status} 
-                      color={user.status === 'active' ? 'success' : 'default'}
-                      size="small"
-                    />
+                    <Chip label={user.status || 'inactive'} color={user.status === 'active' ? 'success' : 'default'} size="small" />
                   </TableCell>
                   <TableCell>{user.lastLogin}</TableCell>
+                  {canManageUsers && (
                   <TableCell>
-                    <IconButton size="small" color="primary">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => {
+                        setUserForm({
+                          username: user.username,
+                          email: user.email,
+                          fullName: '',
+                          role: user.role,
+                          isActive: user.status === 'active',
+                        });
+                        setOpenEditUser(user);
+                      }}
+                    >
                       <EditIcon />
                     </IconButton>
-                    <IconButton size="small" color="error">
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={async () => {
+                        if (!window.confirm(t('dashboard.deleteUserConfirm') || 'Delete this user?')) return;
+                        try {
+                          await adminApi.deleteUser(user.id);
+                          setUsers(prev => prev.filter(u => u.id !== user.id));
+                        } catch (e: any) {
+                          setError(e?.message || 'Failed to delete user');
+                        }
+                      }}
+                    >
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
+      </TabPanel>
+      {/* 言語管理タブ */}
+      <TabPanel value={tabValue} index={7}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5">{t('dashboard.languages')}</Typography>
+          {canManageRoles && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setLanguageForm({ code: '', name: '', description: '', icon: '', color: '#007acc', isActive: true }); setOpenAddLanguage(true); }}> 
+              {t('dashboard.addLanguage')}
+            </Button>
+          )}
+        </Box>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>{t('dashboard.code')}</TableCell>
+                <TableCell>{t('dashboard.name')}</TableCell>
+                <TableCell>{t('dashboard.description')}</TableCell>
+                <TableCell>{t('dashboard.icon')}</TableCell>
+                <TableCell>{t('dashboard.color')}</TableCell>
+                <TableCell>{t('dashboard.status')}</TableCell>
+                {canManageRoles && <TableCell>{t('dashboard.actions')}</TableCell>}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {(languages || []).map((lang) => (
+                <TableRow key={lang.code}>
+                  <TableCell>{lang.code}</TableCell>
+                  <TableCell>{lang.name}</TableCell>
+                  <TableCell>{lang.description || ''}</TableCell>
+                  <TableCell>{lang.icon || ''}</TableCell>
+                  <TableCell>
+                    <Chip label={lang.color || ''} size="small" />
+                  </TableCell>
+                  <TableCell>
+                    <Chip label={lang.isActive ? 'active' : 'inactive'} color={lang.isActive ? 'success' : 'default'} size="small" />
+                  </TableCell>
+                  {canManageRoles && (
+                    <TableCell>
+                      <IconButton size="small" color="primary" onClick={() => { setLanguageForm({ code: lang.code, name: lang.name, description: lang.description || '', icon: lang.icon || '', color: lang.color || '#007acc', isActive: !!lang.isActive }); setEditLanguageCode(lang.code); setOpenAddLanguage(true); }}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={async () => { await adminApi.deleteLanguage(lang.code); setLanguages((prev) => prev.filter((l) => l.code !== lang.code)); }}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Dialog open={openAddLanguage} onClose={() => { setOpenAddLanguage(false); setEditLanguageCode(null); }} fullWidth maxWidth="sm">
+          <DialogTitle>{editLanguageCode ? t('dashboard.editLanguage') : t('dashboard.addLanguage')}</DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              {!editLanguageCode && (
+                <Grid sx={{ width: '100%' }}>
+                  <TextField label={t('dashboard.code')} fullWidth value={languageForm.code} onChange={(e) => setLanguageForm({ ...languageForm, code: e.target.value })} />
+                </Grid>
+              )}
+              <Grid sx={{ width: '100%' }}>
+                <TextField label={t('dashboard.name')} fullWidth value={languageForm.name} onChange={(e) => setLanguageForm({ ...languageForm, name: e.target.value })} />
+              </Grid>
+              <Grid sx={{ width: '100%' }}>
+                <TextField label={t('dashboard.description')} fullWidth value={languageForm.description} onChange={(e) => setLanguageForm({ ...languageForm, description: e.target.value })} />
+              </Grid>
+              <Grid sx={{ width: '100%' }}>
+                <TextField label={t('dashboard.icon')} fullWidth value={languageForm.icon} onChange={(e) => setLanguageForm({ ...languageForm, icon: e.target.value })} />
+              </Grid>
+              <Grid sx={{ width: '100%' }}>
+                <TextField label={t('dashboard.color')} fullWidth value={languageForm.color} onChange={(e) => setLanguageForm({ ...languageForm, color: e.target.value })} />
+              </Grid>
+              <Grid sx={{ width: '100%' }}>
+                <FormControlLabel control={<Switch checked={languageForm.isActive} onChange={(e) => setLanguageForm({ ...languageForm, isActive: e.target.checked })} />} label={t('dashboard.active')} />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => { setOpenAddLanguage(false); setEditLanguageCode(null); }}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={async () => {
+              if (editLanguageCode) {
+                await adminApi.updateLanguage(editLanguageCode, { name: languageForm.name, description: languageForm.description, icon: languageForm.icon, color: languageForm.color, isActive: languageForm.isActive });
+                const updated = await adminApi.getLanguages();
+                setLanguages(updated);
+              } else {
+                await adminApi.createLanguage({ code: languageForm.code, name: languageForm.name, description: languageForm.description, icon: languageForm.icon, color: languageForm.color, isActive: languageForm.isActive });
+                const updated = await adminApi.getLanguages();
+                setLanguages(updated);
+              }
+              setOpenAddLanguage(false); setEditLanguageCode(null);
+            }}>{t('common.save')}</Button>
+          </DialogActions>
+        </Dialog>
       </TabPanel>
 
       {/* APIキー管理タブ */}
@@ -351,9 +590,18 @@ const AdminDashboard: React.FC = () => {
           <Typography variant="h5">
             {t('dashboard.apiKeyManagement')}
           </Typography>
-          <Button variant="contained" startIcon={<AddIcon />}>
+          {canManageUsers && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setApiKeyForm({ name: '', accessLevel: 'user' });
+              setOpenAddApiKey(true);
+            }}
+          >
             {t('dashboard.generateApiKey')}
           </Button>
+          )}
         </Box>
         
         <TableContainer component={Paper}>
@@ -366,7 +614,7 @@ const AdminDashboard: React.FC = () => {
                 <TableCell>{t('dashboard.status')}</TableCell>
                 <TableCell>{t('dashboard.createdAt')}</TableCell>
                 <TableCell>{t('dashboard.lastUsed')}</TableCell>
-                <TableCell>{t('dashboard.actions')}</TableCell>
+                {canManageUsers && <TableCell>{t('dashboard.actions')}</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -394,20 +642,128 @@ const AdminDashboard: React.FC = () => {
                   </TableCell>
                   <TableCell>{apiKey.createdAt}</TableCell>
                   <TableCell>{apiKey.lastUsed}</TableCell>
+                  {canManageUsers && (
                   <TableCell>
-                    <IconButton size="small" color="primary">
+                    <IconButton size="small" color="primary" onClick={() => { setOpenEditApiKey(apiKey); setApiKeyEditForm({ name: apiKey.name, description: '', isActive: apiKey.status === 'active' }); }}>
                       <EditIcon />
                     </IconButton>
-                    <IconButton size="small" color="error">
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => setOpenDeleteApiKey(apiKey)}
+                    >
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
       </TabPanel>
+      {/* Add API Key Dialog */}
+      <Dialog open={openAddApiKey} onClose={() => setOpenAddApiKey(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('dashboard.generateApiKey')}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label="Name" fullWidth value={apiKeyForm.name} onChange={(e) => setApiKeyForm({ ...apiKeyForm, name: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <FormControl fullWidth>
+                <InputLabel>Access Level</InputLabel>
+                <Select value={apiKeyForm.accessLevel} label="Access Level" onChange={(e) => setApiKeyForm({ ...apiKeyForm, accessLevel: e.target.value as string })}>
+                  <MenuItem value="public">Public</MenuItem>
+                  <MenuItem value="user">User</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAddApiKey(false)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              try {
+                if (!apiKeyForm.name) {
+                  setSnackbar({ open: true, message: t('dashboard.nameRequired') || 'Name is required', severity: 'error' });
+                  return;
+                }
+                const created = await adminApi.generateApiKey({ name: apiKeyForm.name, accessLevel: apiKeyForm.accessLevel });
+                setApiKeys(prev => [...prev, created as unknown as ApiKey]);
+                setOpenAddApiKey(false);
+                setSnackbar({ open: true, message: 'APIキーを生成しました', severity: 'success' });
+              } catch (e: any) {
+                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || (t('dashboard.apiKeyGenerateFailed') as string) || 'Failed to generate', severity: 'error' });
+              }
+            }}
+          >{t('common.create')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit API Key Dialog */}
+      <Dialog open={!!openEditApiKey} onClose={() => setOpenEditApiKey(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('dashboard.apiKeyManagement')}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.name')} fullWidth value={apiKeyEditForm.name} onChange={(e) => setApiKeyEditForm({ ...apiKeyEditForm, name: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.description') || 'Description'} fullWidth value={apiKeyEditForm.description} onChange={(e) => setApiKeyEditForm({ ...apiKeyEditForm, description: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <FormControlLabel control={<Switch checked={apiKeyEditForm.isActive} onChange={(e) => setApiKeyEditForm({ ...apiKeyEditForm, isActive: e.target.checked })} />} label={apiKeyEditForm.isActive ? (t('dashboard.active') as string) : (t('dashboard.inactive') as string)} />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEditApiKey(null)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              if (!openEditApiKey) return;
+              try {
+                await adminApi.updateApiKey(openEditApiKey.id, { name: apiKeyEditForm.name, description: apiKeyEditForm.description, isActive: apiKeyEditForm.isActive });
+                setApiKeys(prev => prev.map(k => k.id === openEditApiKey.id ? { ...k, name: apiKeyEditForm.name, status: apiKeyEditForm.isActive ? 'active' : 'inactive' } : k));
+                setOpenEditApiKey(null);
+                setSnackbar({ open: true, message: t('dashboard.userUpdateSuccess') as string, severity: 'success' });
+              } catch (e: any) {
+                setSnackbar({ open: true, message: t('dashboard.apiKeyDeleteFailed') as string, severity: 'error' });
+              }
+            }}
+          >{t('common.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete API Key Dialog */}
+      <Dialog open={!!openDeleteApiKey} onClose={() => setOpenDeleteApiKey(null)}>
+        <DialogTitle>{t('common.delete') || 'Delete'}</DialogTitle>
+        <DialogContent>
+          <Typography>{t('dashboard.deleteApiKeyConfirm') || 'Delete this API key?'}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteApiKey(null)}>{t('common.cancel')}</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={async () => {
+              if (!openDeleteApiKey) return;
+              try {
+                await adminApi.deleteApiKey(openDeleteApiKey.id);
+                setApiKeys(prev => prev.filter(k => k.id !== openDeleteApiKey.id));
+                setOpenDeleteApiKey(null);
+                setSnackbar({ open: true, message: 'APIキーを削除しました', severity: 'success' });
+              } catch (e: any) {
+                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || (t('dashboard.apiKeyDeleteFailed') as string) || 'Failed to delete', severity: 'error' });
+              }
+            }}
+          >{t('common.delete')}</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 設定タブ */}
       <TabPanel value={tabValue} index={2}>
@@ -424,13 +780,13 @@ const AdminDashboard: React.FC = () => {
                 </Typography>
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>{t('dashboard.defaultAccessLevel')}</InputLabel>
-                  <Select defaultValue="public">
+                  <Select value={settings.defaultAccessLevel} label={t('dashboard.defaultAccessLevel')} onChange={(e) => setSettings(s => ({ ...s, defaultAccessLevel: e.target.value as string }))}>
                     <MenuItem value="public">Public</MenuItem>
                     <MenuItem value="user">User</MenuItem>
                     <MenuItem value="admin">Admin</MenuItem>
                   </Select>
                 </FormControl>
-                <Button variant="contained">
+                <Button variant="contained" onClick={async () => { try { await adminApi.updateSettings(settings as any); setSnackbar({ open: true, message: t('dashboard.saveSettings') as string, severity: 'success' }); } catch { setSnackbar({ open: true, message: t('dashboard.loadError') as string, severity: 'error' }); } }}>
                   {t('dashboard.saveSettings')}
                 </Button>
               </CardContent>
@@ -447,10 +803,11 @@ const AdminDashboard: React.FC = () => {
                   fullWidth
                   label={t('dashboard.requestsPerMinute')}
                   type="number"
-                  defaultValue={100}
+                  value={settings.requestsPerMinute}
+                  onChange={(e) => setSettings(s => ({ ...s, requestsPerMinute: parseInt(e.target.value || '0', 10) || 0 }))}
                   sx={{ mb: 2 }}
                 />
-                <Button variant="contained">
+                <Button variant="contained" onClick={async () => { try { await adminApi.updateSettings(settings as any); setSnackbar({ open: true, message: t('dashboard.updateLimits') as string, severity: 'success' }); } catch { setSnackbar({ open: true, message: t('dashboard.loadError') as string, severity: 'error' }); } }}>
                   {t('dashboard.updateLimits')}
                 </Button>
               </CardContent>
@@ -524,22 +881,16 @@ const AdminDashboard: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>getRules</TableCell>
-                        <TableCell>1,234</TableCell>
-                        <TableCell>2分前</TableCell>
-                        <TableCell>
-                          <Chip label="正常" color="success" size="small" />
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>validateCode</TableCell>
-                        <TableCell>567</TableCell>
-                        <TableCell>5分前</TableCell>
-                        <TableCell>
-                          <Chip label="正常" color="success" size="small" />
-                        </TableCell>
-                      </TableRow>
+                      {mcpStats.map((row, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{row.method}</TableCell>
+                          <TableCell>{row.count}</TableCell>
+                          <TableCell>{row.lastUsed}</TableCell>
+                          <TableCell>
+                            <Chip label={row.status} color={row.status === '正常' || row.status === 'ok' ? 'success' : 'warning'} size="small" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -553,14 +904,14 @@ const AdminDashboard: React.FC = () => {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   {t('dashboard.mcpPerformance')}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {t('dashboard.averageResponseTime')}: 45ms
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {t('dashboard.averageResponseTime')}: {mcpPerf.avgMs}ms (p95: {mcpPerf.p95Ms}ms)
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {t('dashboard.successRate')}: 99.8%
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {t('dashboard.successRate')}: {mcpPerf.successRate.toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {t('dashboard.errorRate')}: 0.2%
+                  {t('dashboard.errorRate')}: {mcpPerf.errorRate.toFixed(1)}%
                 </Typography>
               </CardContent>
             </Card>
@@ -582,18 +933,17 @@ const AdminDashboard: React.FC = () => {
                   {t('dashboard.recentLogs')}
                 </Typography>
                 <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                  <Typography variant="body2" fontFamily="monospace" fontSize="0.8rem">
-                    [2024-01-15 14:30:15] INFO: User 'admin' logged in successfully
-                  </Typography>
-                  <Typography variant="body2" fontFamily="monospace" fontSize="0.8rem">
-                    [2024-01-15 14:29:45] WARN: API key 'user_key_456' expired
-                  </Typography>
-                  <Typography variant="body2" fontFamily="monospace" fontSize="0.8rem">
-                    [2024-01-15 14:28:30] INFO: MCP request 'getRules' processed in 23ms
-                  </Typography>
-                  <Typography variant="body2" fontFamily="monospace" fontSize="0.8rem">
-                    [2024-01-15 14:27:15] ERROR: Database connection timeout
-                  </Typography>
+                  {(systemLogs?.length ?? 0) === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {t('dashboard.noRecentActivity')}
+                    </Typography>
+                  ) : (
+                    (systemLogs || []).map((log, idx) => (
+                      <Typography key={idx} variant="body2" fontFamily="monospace" fontSize="0.8rem">
+                        [{new Date(log.timestamp).toLocaleString()}] {log.level}: {log.message}
+                      </Typography>
+                    ))
+                  )}
                 </Box>
               </CardContent>
             </Card>
@@ -608,15 +958,15 @@ const AdminDashboard: React.FC = () => {
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2">INFO</Typography>
-                    <Chip label="1,234" size="small" color="info" />
+                    <Chip label={String(logCounts.INFO)} size="small" color="info" />
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2">WARN</Typography>
-                    <Chip label="45" size="small" color="warning" />
+                    <Chip label={String(logCounts.WARN)} size="small" color="warning" />
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2">ERROR</Typography>
-                    <Chip label="12" size="small" color="error" />
+                    <Chip label={String(logCounts.ERROR)} size="small" color="error" />
                   </Box>
                 </Box>
               </CardContent>
@@ -624,6 +974,280 @@ const AdminDashboard: React.FC = () => {
           </Grid>
         </Grid>
       </TabPanel>
+      {/* Add User Dialog */}
+      <Dialog open={openAddUser} onClose={() => setOpenAddUser(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('dashboard.addUser')}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.username')} fullWidth value={userForm.username} onChange={(e) => setUserForm({ ...userForm, username: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.email')} fullWidth value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.fullName')} fullWidth value={userForm.fullName} onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <FormControl fullWidth>
+                <InputLabel>Role</InputLabel>
+                <Select value={userForm.role} label="Role" onChange={(e) => setUserForm({ ...userForm, role: e.target.value as string })}>
+                  <MenuItem value="user">User</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAddUser(false)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              try {
+                if (!userForm.username || !userForm.email) {
+                  setSnackbar({ open: true, message: 'usernameとemailは必須です', severity: 'error' });
+                  return;
+                }
+                const created = await adminApi.createUser({
+                  username: userForm.username,
+                  email: userForm.email,
+                  fullName: userForm.fullName,
+                  role: userForm.role,
+                  isActive: userForm.isActive,
+                });
+                setUsers(prev => ([...prev, {
+                  id: created.id,
+                  username: created.username,
+                  email: created.email,
+                  role: created.role,
+                  status: created.isActive ? 'active' : 'inactive',
+                  lastLogin: created.lastLogin,
+                }]));
+                setOpenAddUser(false);
+                setSnackbar({ open: true, message: 'ユーザーを作成しました', severity: 'success' });
+              } catch (e: any) {
+                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || (t('dashboard.userCreateFailed') as string) || 'Failed to create', severity: 'error' });
+              }
+            }}
+          >{t('common.create')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!openEditUser} onClose={() => setOpenEditUser(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('dashboard.editUser') || 'Edit User'}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.username')} fullWidth value={userForm.username} onChange={(e) => setUserForm({ ...userForm, username: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.email')} fullWidth value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.fullName')} fullWidth value={userForm.fullName} onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <FormControl fullWidth>
+                <InputLabel>Role</InputLabel>
+                <Select value={userForm.role} label="Role" onChange={(e) => setUserForm({ ...userForm, role: e.target.value as string })}>
+                  <MenuItem value="user">User</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEditUser(null)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              if (!openEditUser) return;
+              try {
+                const updated = await adminApi.updateUser(openEditUser.id, {
+                  username: userForm.username,
+                  email: userForm.email,
+                  fullName: userForm.fullName,
+                  role: userForm.role,
+                  isActive: userForm.isActive,
+                });
+                setUsers(prev => prev.map(u => u.id === openEditUser.id ? {
+                  id: updated.id,
+                  username: updated.username,
+                  email: updated.email,
+                  role: updated.role,
+                  status: updated.isActive ? 'active' : 'inactive',
+                  lastLogin: updated.lastLogin,
+                } : u));
+                setOpenEditUser(null);
+                setSnackbar({ open: true, message: 'ユーザーを更新しました', severity: 'success' });
+              } catch (e: any) {
+                setSnackbar({ open: true, message: e?.normalized?.message || e?.message || (t('dashboard.userUpdateFailed') as string) || 'Failed to update', severity: 'error' });
+              }
+            }}
+          >{t('common.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Roles 管理タブ */}
+      <TabPanel value={tabValue} index={6}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5">
+            {t('dashboard.roles') || 'Roles'}
+          </Typography>
+          {canManageRoles && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setRoleForm({ name: '', description: '', permissions: { manage_users: false, manage_rules: true, manage_roles: false }, is_active: true }); setOpenAddRole(true); }}>
+            {t('common.add')}
+          </Button>
+          )}
+        </Box>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>{t('dashboard.name')}</TableCell>
+                <TableCell>{t('dashboard.description') || 'Description'}</TableCell>
+                <TableCell>{t('dashboard.permissions') || 'Permissions'}</TableCell>
+                <TableCell>{t('dashboard.status')}</TableCell>
+                {canManageRoles && <TableCell>{t('dashboard.actions')}</TableCell>}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {roles.map((r) => (
+                <TableRow key={r.name}>
+                  <TableCell>{r.name}</TableCell>
+                  <TableCell>{r.description}</TableCell>
+                  <TableCell>
+                    <Chip label={`manage_users: ${r.permissions?.manage_users ? 'on' : 'off'}`} size="small" sx={{ mr: 1 }} />
+                    <Chip label={`manage_rules: ${r.permissions?.manage_rules ? 'on' : 'off'}`} size="small" sx={{ mr: 1 }} />
+                    <Chip label={`manage_roles: ${r.permissions?.manage_roles ? 'on' : 'off'}`} size="small" />
+                  </TableCell>
+                  <TableCell>
+                    <Chip label={r.is_active ? (t('dashboard.active') as string) : (t('dashboard.inactive') as string)} color={r.is_active ? 'success' : 'default'} size="small" />
+                  </TableCell>
+                  {canManageRoles && (
+                  <TableCell>
+                    <IconButton size="small" color="primary" onClick={() => { setRoleForm({ name: r.name, description: r.description, permissions: r.permissions, is_active: r.is_active }); setOpenEditRole(r); }}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => { setRoleForm({ name: `${r.name}-copy`, description: r.description, permissions: r.permissions, is_active: r.is_active }); setOpenAddRole(true); }}>
+                      <ContentCopyIcon />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={async () => { if (!window.confirm(t('dashboard.deleteRoleConfirm') || 'Delete this role?')) return; await adminApi.deleteRole(r.name); setRoles(prev => prev.filter(x => x.name !== r.name)); }}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </TabPanel>
+
+      {/* Add Role Dialog */}
+      <Dialog open={openAddRole} onClose={() => setOpenAddRole(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('dashboard.addRole') || 'Add Role'}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.name')} fullWidth value={roleForm.name} onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.description') || 'Description'} fullWidth value={roleForm.description} onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('dashboard.rolePresets') || 'Role Presets'}</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('readonly')}>{t('dashboard.presetReadOnly') || 'ReadOnly'}</Button>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('editor')}>{t('dashboard.presetEditor') || 'Editor'}</Button>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('admin')}>{t('dashboard.presetAdmin') || 'Admin'}</Button>
+              </Box>
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('dashboard.permissions') || 'Permissions'}</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Tooltip title={t('permissions.manage_users.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_users ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_users: !roleForm.permissions?.manage_users } })}>
+                    {t('permissions.manage_users.name') || 'manage_users'}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('permissions.manage_rules.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_rules ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_rules: !roleForm.permissions?.manage_rules } })}>
+                    {t('permissions.manage_rules.name') || 'manage_rules'}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('permissions.manage_roles.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_roles ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_roles: !roleForm.permissions?.manage_roles } })}>
+                    {t('permissions.manage_roles.name') || 'manage_roles'}
+                  </Button>
+                </Tooltip>
+              </Box>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAddRole(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={async () => { await adminApi.createRole({ name: roleForm.name, description: roleForm.description, permissions: roleForm.permissions, is_active: roleForm.is_active }); setOpenAddRole(false); const list = await adminApi.getRoles(); setRoles(list); }}>{t('common.create')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Role Dialog */}
+      <Dialog open={!!openEditRole} onClose={() => setOpenEditRole(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('dashboard.editRole') || 'Edit Role'}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.name')} fullWidth value={roleForm.name} disabled />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.description') || 'Description'} fullWidth value={roleForm.description} onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('dashboard.rolePresets') || 'Role Presets'}</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('readonly')}>{t('dashboard.presetReadOnly') || 'ReadOnly'}</Button>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('editor')}>{t('dashboard.presetEditor') || 'Editor'}</Button>
+                <Button size="small" variant="outlined" onClick={() => applyPreset('admin')}>{t('dashboard.presetAdmin') || 'Admin'}</Button>
+              </Box>
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('dashboard.permissions') || 'Permissions'}</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Tooltip title={t('permissions.manage_users.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_users ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_users: !roleForm.permissions?.manage_users } })}>
+                    {t('permissions.manage_users.name') || 'manage_users'}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('permissions.manage_rules.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_rules ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_rules: !roleForm.permissions?.manage_rules } })}>
+                    {t('permissions.manage_rules.name') || 'manage_rules'}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={t('permissions.manage_roles.desc') || ''} arrow>
+                  <Button variant={roleForm.permissions?.manage_roles ? 'contained' : 'outlined'} onClick={() => setRoleForm({ ...roleForm, permissions: { ...roleForm.permissions, manage_roles: !roleForm.permissions?.manage_roles } })}>
+                    {t('permissions.manage_roles.name') || 'manage_roles'}
+                  </Button>
+                </Tooltip>
+              </Box>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEditRole(null)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={async () => { if (!openEditRole) return; await adminApi.updateRole(openEditRole.name, { description: roleForm.description, permissions: roleForm.permissions, is_active: roleForm.is_active }); setOpenEditRole(null); const list = await adminApi.getRoles(); setRoles(list); }}>{t('common.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        message={snackbar.message}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        autoHideDuration={3000}
+      />
     </Box>
   );
 };

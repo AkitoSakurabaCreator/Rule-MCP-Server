@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -14,7 +14,7 @@ import {
   ListItemText,
   Paper,
 } from '@mui/material';
-import { CheckCircle as CheckIcon, Error as ErrorIcon, Warning as WarningIcon } from '@mui/icons-material';
+import { Error as ErrorIcon, Warning as WarningIcon } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { Project, ValidationResult } from '../types';
 import { api } from '../services/api';
@@ -28,11 +28,7 @@ const CodeValidator: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const response = await api.get('/projects');
       setProjects(response.data.projects);
@@ -43,7 +39,11 @@ const CodeValidator: React.FC = () => {
       setError(t('codeValidator.loadProjectsError'));
       console.error('Failed to load projects:', error);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   const handleValidate = async () => {
     if (!selectedProject || !code.trim()) {
@@ -65,28 +65,6 @@ const CodeValidator: React.FC = () => {
       setError(error.response?.data?.error || t('codeValidator.validationError'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getSeverityIcon = (severity: string) => {
-    switch (severity.toLowerCase()) {
-      case 'error':
-        return <ErrorIcon color="error" />;
-      case 'warning':
-        return <WarningIcon color="warning" />;
-      default:
-        return <CheckIcon color="success" />;
-    }
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity.toLowerCase()) {
-      case 'error':
-        return 'error.main';
-      case 'warning':
-        return 'warning.main';
-      default:
-        return 'success.main';
     }
   };
 

@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-AIエージェント（Cursor、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
+AIエージェント（Cursor、Claude Code、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
 
 ## 機能
 
@@ -17,6 +17,87 @@ AIエージェント（Cursor、Cline）が共通のルールを取得・適用�
 - **多言語対応（i18n）**: 英語、日本語、中国語、ヒンディー語、スペイン語、アラビア語
 - **ダークテーマ対応**: ライト/ダークモード切り替え
 - **クリーンアーキテクチャ**による保守性の高い設計
+
+## 🚀 クイックスタート
+
+### 1. MCPサーバーのインストール
+
+```bash
+# pnpm dlx経由（推奨・インストール不要）
+pnpm dlx rule-mcp-server
+
+# またはグローバルインストール
+pnpm add -g rule-mcp-server
+```
+
+### 2. AIエージェント設定
+
+#### Cursor
+```bash
+# 設定テンプレートをコピー
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
+```
+
+#### Claude Code
+```bash
+# Claude Code にMCPサーバーを追加（stdio）
+claude mcp add rule-mcp-server --env RULE_SERVER_URL=http://localhost:18080 -- pnpm dlx rule-mcp-server
+
+# APIキーを使う場合
+claude mcp add rule-mcp-server \
+  --env RULE_SERVER_URL=http://localhost:18080 \
+  --env MCP_API_KEY=your_api_key \
+  -- pnpm dlx rule-mcp-server
+
+# 参考: Anthropic公式ドキュメント
+# https://docs.anthropic.com/ja/docs/claude-code/mcp
+```
+
+### 3. 利用開始！
+
+AIエージェント（Cursor/Claude Code）を再起動して、コーディングルールを自動取得・適用できるようになります。
+
+**📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
+
+### サーバー稼働の前提と起動手順（重要）
+
+このMCPクライアント設定は、バックエンドのRule MCP Serverが稼働していることを前提としています。
+
+#### 稼働確認
+```bash
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} が返れば稼働中
+```
+
+#### サーバー未稼働の場合（ローカル起動: Docker）
+```bash
+# リポジトリを取得
+git clone https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git
+cd Rule-MCP-Server
+
+# Dockerで起動（推奨）
+docker compose up -d
+
+# 停止
+docker compose down
+```
+
+#### LAN 内公開の例（チーム運用）
+- サーバーをLAN上のホストで起動し、クライアント側の環境変数をLAN IPに設定:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "env": {
+        "RULE_SERVER_URL": "http://192.168.1.20:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      }
+    }
+  }
+}
+```
+
+参考: Makefile を使う場合は `make docker-up` / `make docker-down`
 
 ## 技術スタック
 
@@ -371,7 +452,7 @@ cp config/standard-mcp-config.template.json ~/.cursor/mcp_settings.json
 #### **3. 設定ファイルの配置**
 - **Cursor**: `~/.cursor/mcp_settings.json`
 - **Cline**: `~/.cline/mcp_settings.json`
-- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Claude Code**: CLIで追加（`claude mcp add ...` を使用）
 
 #### **4. 利用可能なツール**
 標準MCPサーバーは以下のツールを提供：
@@ -1030,28 +1111,54 @@ curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
 ```
 
 ### **MCPクライアント設定**
+
+#### Cursor
 ```json
 // ~/.cursor/mcp.json
 {
   "mcpServers": {
     "rule-mcp-server": {
-      "command": "curl",
+      "command": "pnpm",
       "args": [
-        "-X", "POST",
-        "-H", "Content-Type: application/json",
-        "-H", "X-API-Key: ${MCP_API_KEY}",
-        "-d", "{\"id\":\"${requestId}\",\"method\":\"${method}\",\"params\":${params}}",
-        "${MCP_SERVER_URL}/mcp/request"
+        "dlx",
+        "rule-mcp-server"
       ],
       "env": {
-        "MCP_SERVER_URL": "http://localhost:18081",
-        "MCP_API_KEY": "your_api_key_here",
-        "AUTO_INJECT": "true"
-      }
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
     }
   }
 }
 ```
+
+#### Claude Desktop
+```json
+// ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "rule-mcp-server"
+      ],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+補足: `MCP_API_KEY` は未設定でも動作します（Publicアクセス）。チーム運用や管理APIを使う場合にのみ設定してください。
 
 ## 🚀 クイックスタート
 
@@ -1064,7 +1171,7 @@ pnpm add -g rule-mcp-server
 # 2. 設定ファイルを作成
 cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 
-# 3. AIエージェント（Cursor/Cline）で利用開始！
+# 3. AIエージェント（Cursor/Claude Desktop/Cline）で利用開始！
 ```
 
 **📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server) として公開済み
@@ -1252,23 +1359,6 @@ refactor: improve error handling in MCP handlers
 - **型安全性**: TypeScriptの型定義を適切に使用
 - **エラーハンドリング**: 適切なエラーメッセージとログ出力
 
-## 📈 ロードマップ
-
-### v1.1.0 (予定)
-- [ ] **Kubernetes対応**: Helm Chart提供
-- [ ] **メトリクス**: Prometheus/Grafana統合
-- [ ] **プラグインシステム**: カスタムルール拡張
-
-### v1.2.0 (予定)
-- [ ] **AI統合**: GPT-4によるルール自動生成
-- [ ] **IDE拡張**: VS Code Extension
-- [ ] **クラウド対応**: AWS/GCP/Azure対応
-
-### v2.0.0 (予定)
-- [ ] **分散アーキテクチャ**: マイクロサービス化
-- [ ] **リアルタイム協働**: WebSocket活用
-- [ ] **機械学習**: ルール推奨システム
-
 ## 🏆 コミュニティ
 
 ### 貢献者
@@ -1299,14 +1389,43 @@ MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してくださ�
 ### ドキュメント
 
 - **📚 詳細ドキュメント**: [GitHub Wiki](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/wiki)
-- **🎥 チュートリアル**: [YouTube Playlist](https://youtube.com/playlist?list=...)
-- **📖 API リファレンス**: [API Docs](https://api-docs.rulemcp.com)
 
 ### コミュニティ
 
-- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/...)
-- **🐦 Twitter**: [@RuleMCPServer](https://twitter.com/RuleMCPServer)
-- **📧 メーリングリスト**: [Google Groups](https://groups.google.com/g/rule-mcp-server)
+- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/dCAUC8m6dw)
+- **🐦 X (旧Twitter)**: [@_sakuraba_akito](https://x.com/_sakuraba_akito)
+
+### プロジェクト支援
+
+- **💖 スポンサー**: [GitHub Sponsors](https://github.com/sponsors/AkitoSakurabaCreator)
+
+## 📋 貢献ガイドライン
+
+### 貢献の流れ
+
+1. **Issue作成**: バグ報告や機能提案
+2. **フォーク**: リポジトリをフォーク
+3. **ブランチ作成**: `feature/your-feature` または `fix/your-fix`
+4. **開発**: コード変更とテスト追加
+5. **プルリクエスト**: 詳細な説明と共に提出
+
+詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+
+## 📜 ライセンス
+
+MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
+
+## 🔒 セキュリティ
+
+セキュリティに関する問題を発見した場合は、[SECURITY.md](SECURITY.md) の手順に従って報告してください。
+
+## 📝 行動規範
+
+このプロジェクトは [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) に従って運営されています。
+
+## 📈 変更履歴
+
+最新の変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
 
 ---
 
