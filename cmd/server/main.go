@@ -465,6 +465,9 @@ func main() {
 			api.POST("/global-rules", globalRuleHandler.CreateGlobalRule)
 			api.DELETE("/global-rules/:language/:rule_id", globalRuleHandler.DeleteGlobalRule)
 			api.GET("/languages", globalRuleHandler.GetLanguages)
+			api.POST("/languages", globalRuleHandler.CreateLanguage)
+			api.PUT("/languages/:code", globalRuleHandler.UpdateLanguage)
+			api.DELETE("/languages/:code", globalRuleHandler.DeleteLanguage)
 			api.POST("/global-rules/export", globalRuleHandler.ExportGlobalRules)
 			api.POST("/global-rules/import", globalRuleHandler.ImportGlobalRules)
 		}
