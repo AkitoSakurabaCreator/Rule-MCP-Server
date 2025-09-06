@@ -261,7 +261,7 @@ func (h *SimpleMCPHandler) HandleWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	// Handle WebSocket messages
+	// WebSocketメッセージを処理
 	for {
 		var req domain.MCPRequest
 		err := conn.ReadJSON(&req)
@@ -269,12 +269,12 @@ func (h *SimpleMCPHandler) HandleWebSocket(c *gin.Context) {
 			break
 		}
 
-		// Process MCP request
+		// MCPリクエストを処理
 		h.processWebSocketRequest(conn, req)
 	}
 }
 
-// processWebSocketRequest processes MCP requests over WebSocket
+// processWebSocketRequest WebSocket経由でMCPリクエストを処理
 func (h *SimpleMCPHandler) processWebSocketRequest(conn *websocket.Conn, req domain.MCPRequest) {
 	switch req.Method {
 	case "getRules":
@@ -286,7 +286,7 @@ func (h *SimpleMCPHandler) processWebSocketRequest(conn *websocket.Conn, req dom
 	}
 }
 
-// handleWebSocketGetRules handles getRules over WebSocket
+// handleWebSocketGetRules WebSocket経由でgetRulesを処理
 func (h *SimpleMCPHandler) handleWebSocketGetRules(conn *websocket.Conn, req domain.MCPRequest) {
 	var params domain.MCPRuleRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
