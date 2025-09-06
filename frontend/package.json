@@ -58,6 +58,7 @@
     "@storybook/addon-onboarding": "^9.1.4",
     "@storybook/jest": "^0.2.2",
     "@storybook/preset-create-react-app": "^9.1.4",
+    "@storybook/react": "^9.1.4",
     "@storybook/react-webpack5": "^9.1.4",
     "@storybook/testing-library": "^0.2.1",
     "eslint-plugin-storybook": "^9.1.4",
