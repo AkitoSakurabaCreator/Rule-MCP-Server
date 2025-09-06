@@ -272,6 +272,8 @@
     "nameRequired": "Name is required",
     "apiKeyGenerateSuccess": "API key generated",
     "apiKeyGenerateFailed": "Failed to generate API key",
+    "apiKeyUpdateSuccess": "API key updated",
+    "apiKeyUpdateFailed": "Failed to update API key",
     "apiKeyDeleteSuccess": "API key deleted",
     "apiKeyDeleteFailed": "Failed to delete API key",
     "deleteApiKeyConfirm": "Delete this API key?",

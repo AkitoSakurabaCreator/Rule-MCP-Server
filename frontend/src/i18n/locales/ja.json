@@ -273,6 +273,8 @@
     "nameRequired": "名前は必須です",
     "apiKeyGenerateSuccess": "APIキーを生成しました",
     "apiKeyGenerateFailed": "APIキー生成に失敗しました",
+    "apiKeyUpdateSuccess": "APIキーを更新しました",
+    "apiKeyUpdateFailed": "APIキー更新に失敗しました",
     "apiKeyDeleteSuccess": "APIキーを削除しました",
     "apiKeyDeleteFailed": "APIキー削除に失敗しました",
     "deleteApiKeyConfirm": "このAPIキーを削除しますか？",
