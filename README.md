@@ -1399,6 +1399,34 @@ MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してくださ�
 
 - **💖 スポンサー**: [GitHub Sponsors](https://github.com/sponsors/AkitoSakurabaCreator)
 
+## 📋 貢献ガイドライン
+
+### 貢献の流れ
+
+1. **Issue作成**: バグ報告や機能提案
+2. **フォーク**: リポジトリをフォーク
+3. **ブランチ作成**: `feature/your-feature` または `fix/your-fix`
+4. **開発**: コード変更とテスト追加
+5. **プルリクエスト**: 詳細な説明と共に提出
+
+詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+
+## 📜 ライセンス
+
+MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
+
+## 🔒 セキュリティ
+
+セキュリティに関する問題を発見した場合は、[SECURITY.md](SECURITY.md) の手順に従って報告してください。
+
+## 📝 行動規範
+
+このプロジェクトは [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) に従って運営されています。
+
+## 📈 変更履歴
+
+最新の変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
+
 ---
 
 **⭐ このプロジェクトが役に立ったら、GitHubでスターをお願いします！**
