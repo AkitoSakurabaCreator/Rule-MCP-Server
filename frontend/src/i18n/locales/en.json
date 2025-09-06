@@ -220,6 +220,7 @@
     "mcpMonitoring": "MCP Monitoring",
     "systemLogs": "System Logs",
     "roles": "Roles",
+    "languages": "Languages",
     "userManagement": "User Management",
     "addUser": "Add User",
     "username": "Username",
@@ -282,7 +283,13 @@
     "rolePresets": "Role Presets",
     "presetReadOnly": "ReadOnly",
     "presetEditor": "Editor",
-    "presetAdmin": "Admin"
+    "presetAdmin": "Admin",
+    "addLanguage": "Add Language",
+    "editLanguage": "Edit Language",
+    "code": "Code",
+    "icon": "Icon",
+    "color": "Color",
+    "active": "Active"
   },
   "permissions": {
     "manage_users": {
