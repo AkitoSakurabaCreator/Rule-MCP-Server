@@ -106,6 +106,10 @@ const AdminDashboard: React.FC = () => {
   });
   const [mcpStats, setMcpStats] = useState<MCPStatsType[]>([]);
   const [mcpPerf, setMcpPerf] = useState<{ avgMs: number; successRate: number; errorRate: number; p95Ms: number }>({ avgMs: 0, successRate: 0, errorRate: 0, p95Ms: 0 });
+  const [languages, setLanguages] = useState<{ code: string; name: string; description?: string; icon?: string; color?: string; isActive?: boolean }[]>([]);
+  const [openAddLanguage, setOpenAddLanguage] = useState(false);
+  const [editLanguageCode, setEditLanguageCode] = useState<string | null>(null);
+  const [languageForm, setLanguageForm] = useState<{ code: string; name: string; description: string; icon: string; color: string; isActive: boolean }>({ code: '', name: '', description: '', icon: '', color: '#007acc', isActive: true });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [systemLogs, setSystemLogs] = useState<SystemLogType[]>([]);
@@ -148,7 +152,7 @@ const AdminDashboard: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const [s, u, k, m, logs, perf, conf] = await Promise.all([
+        const [s, u, k, m, logs, perf, conf, langs] = await Promise.all([
           adminApi.getStats(),
           canManageUsers ? adminApi.getUsers() : Promise.resolve([]),
           adminApi.getApiKeys(),
@@ -156,6 +160,7 @@ const AdminDashboard: React.FC = () => {
           adminApi.getSystemLogs(),
           adminApi.getMCPPerformance(),
           adminApi.getSettings(),
+          adminApi.getLanguages(),
         ]);
         const rls = canManageRoles ? await adminApi.getRoles() : [];
         if (!mounted) return;
@@ -172,9 +177,9 @@ const AdminDashboard: React.FC = () => {
         );
         setApiKeys(k as unknown as ApiKey[]);
         setMcpStats(m);
-        setSystemLogs(logs);
+        setSystemLogs(Array.isArray(logs) ? logs : []);
         // 集計（INFO/WARN/ERROR）
-        const counts = logs.reduce((acc: any, l: any) => {
+        const counts = (Array.isArray(logs) ? logs : []).reduce((acc: any, l: any) => {
           const level = (l.level || '').toUpperCase();
           if (level === 'WARN') acc.WARN += 1;
           else if (level === 'ERROR') acc.ERROR += 1;
@@ -189,6 +194,7 @@ const AdminDashboard: React.FC = () => {
         const da = (conf as any).defaultAccessLevel || 'public';
         const rpm = parseInt((conf as any).requestsPerMinute || '100', 10) || 100;
         setSettings({ defaultAccessLevel: da, requestsPerMinute: rpm });
+        setLanguages(Array.isArray(langs) ? langs : []);
       } catch (e: any) {
         setError(e?.message || 'Failed to load admin data');
       } finally {
@@ -385,6 +391,11 @@ const AdminDashboard: React.FC = () => {
             disabled={!canManageRoles}
             iconPosition="start"
           />
+          <Tab 
+            icon={<CodeIcon />} 
+            label={t('dashboard.languages') || 'Languages'} 
+            iconPosition="start"
+          />
         </Tabs>
       </Box>
 
@@ -476,6 +487,101 @@ const AdminDashboard: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+      </TabPanel>
+      {/* 言語管理タブ */}
+      <TabPanel value={tabValue} index={7}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5">{t('dashboard.languages')}</Typography>
+          {canManageRoles && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setLanguageForm({ code: '', name: '', description: '', icon: '', color: '#007acc', isActive: true }); setOpenAddLanguage(true); }}> 
+              {t('dashboard.addLanguage')}
+            </Button>
+          )}
+        </Box>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>{t('dashboard.code')}</TableCell>
+                <TableCell>{t('dashboard.name')}</TableCell>
+                <TableCell>{t('dashboard.description')}</TableCell>
+                <TableCell>{t('dashboard.icon')}</TableCell>
+                <TableCell>{t('dashboard.color')}</TableCell>
+                <TableCell>{t('dashboard.status')}</TableCell>
+                {canManageRoles && <TableCell>{t('dashboard.actions')}</TableCell>}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {(languages || []).map((lang) => (
+                <TableRow key={lang.code}>
+                  <TableCell>{lang.code}</TableCell>
+                  <TableCell>{lang.name}</TableCell>
+                  <TableCell>{lang.description || ''}</TableCell>
+                  <TableCell>{lang.icon || ''}</TableCell>
+                  <TableCell>
+                    <Chip label={lang.color || ''} size="small" />
+                  </TableCell>
+                  <TableCell>
+                    <Chip label={lang.isActive ? 'active' : 'inactive'} color={lang.isActive ? 'success' : 'default'} size="small" />
+                  </TableCell>
+                  {canManageRoles && (
+                    <TableCell>
+                      <IconButton size="small" color="primary" onClick={() => { setLanguageForm({ code: lang.code, name: lang.name, description: lang.description || '', icon: lang.icon || '', color: lang.color || '#007acc', isActive: !!lang.isActive }); setEditLanguageCode(lang.code); setOpenAddLanguage(true); }}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={async () => { await adminApi.deleteLanguage(lang.code); setLanguages((prev) => prev.filter((l) => l.code !== lang.code)); }}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Dialog open={openAddLanguage} onClose={() => { setOpenAddLanguage(false); setEditLanguageCode(null); }} fullWidth maxWidth="sm">
+          <DialogTitle>{editLanguageCode ? t('dashboard.editLanguage') : t('dashboard.addLanguage')}</DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              {!editLanguageCode && (
+                <Grid sx={{ width: '100%' }}>
+                  <TextField label={t('dashboard.code')} fullWidth value={languageForm.code} onChange={(e) => setLanguageForm({ ...languageForm, code: e.target.value })} />
+                </Grid>
+              )}
+              <Grid sx={{ width: '100%' }}>
+                <TextField label={t('dashboard.name')} fullWidth value={languageForm.name} onChange={(e) => setLanguageForm({ ...languageForm, name: e.target.value })} />
+              </Grid>
+              <Grid sx={{ width: '100%' }}>
+                <TextField label={t('dashboard.description')} fullWidth value={languageForm.description} onChange={(e) => setLanguageForm({ ...languageForm, description: e.target.value })} />
+              </Grid>
+              <Grid sx={{ width: '100%' }}>
+                <TextField label={t('dashboard.icon')} fullWidth value={languageForm.icon} onChange={(e) => setLanguageForm({ ...languageForm, icon: e.target.value })} />
+              </Grid>
+              <Grid sx={{ width: '100%' }}>
+                <TextField label={t('dashboard.color')} fullWidth value={languageForm.color} onChange={(e) => setLanguageForm({ ...languageForm, color: e.target.value })} />
+              </Grid>
+              <Grid sx={{ width: '100%' }}>
+                <FormControlLabel control={<Switch checked={languageForm.isActive} onChange={(e) => setLanguageForm({ ...languageForm, isActive: e.target.checked })} />} label={t('dashboard.active')} />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => { setOpenAddLanguage(false); setEditLanguageCode(null); }}>{t('common.cancel')}</Button>
+            <Button variant="contained" onClick={async () => {
+              if (editLanguageCode) {
+                await adminApi.updateLanguage(editLanguageCode, { name: languageForm.name, description: languageForm.description, icon: languageForm.icon, color: languageForm.color, isActive: languageForm.isActive });
+                const updated = await adminApi.getLanguages();
+                setLanguages(updated);
+              } else {
+                await adminApi.createLanguage({ code: languageForm.code, name: languageForm.name, description: languageForm.description, icon: languageForm.icon, color: languageForm.color, isActive: languageForm.isActive });
+                const updated = await adminApi.getLanguages();
+                setLanguages(updated);
+              }
+              setOpenAddLanguage(false); setEditLanguageCode(null);
+            }}>{t('common.save')}</Button>
+          </DialogActions>
+        </Dialog>
       </TabPanel>
 
       {/* APIキー管理タブ */}
@@ -827,12 +933,12 @@ const AdminDashboard: React.FC = () => {
                   {t('dashboard.recentLogs')}
                 </Typography>
                 <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                  {systemLogs.length === 0 ? (
+                  {(systemLogs?.length ?? 0) === 0 ? (
                     <Typography variant="body2" color="text.secondary">
                       {t('dashboard.noRecentActivity')}
                     </Typography>
                   ) : (
-                    systemLogs.map((log, idx) => (
+                    (systemLogs || []).map((log, idx) => (
                       <Typography key={idx} variant="body2" fontFamily="monospace" fontSize="0.8rem">
                         [{new Date(log.timestamp).toLocaleString()}] {log.level}: {log.message}
                       </Typography>
