@@ -28,7 +28,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'pnpm'
       - name: Install deps (frontend)
         run: pnpm -C frontend install --no-frozen-lockfile
       - name: Lint/Test/Build (frontend)
@@ -55,5 +54,5 @@ jobs:
       - name: Install Spectral
         run: npm i -g @stoplight/spectral-cli
       - name: Lint OpenAPI
-        run: spectral lint openapi/openapi.yaml --fail-severity=warn --ruleset @stoplight/spectral/rulesets/oas
+        run: spectral lint openapi/openapi.yaml --fail-severity=warn
 
