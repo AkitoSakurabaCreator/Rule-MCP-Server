@@ -221,6 +221,7 @@
     "mcpMonitoring": "MCP監視",
     "systemLogs": "システムログ",
     "roles": "ロール管理",
+    "languages": "言語管理",
     "userManagement": "ユーザー管理",
     "addUser": "ユーザー追加",
     "username": "ユーザー名",
@@ -283,7 +284,13 @@
     "rolePresets": "ロールプリセット",
     "presetReadOnly": "ReadOnly",
     "presetEditor": "Editor",
-    "presetAdmin": "Admin"
+    "presetAdmin": "Admin",
+    "addLanguage": "言語追加",
+    "editLanguage": "言語編集",
+    "code": "コード",
+    "icon": "アイコン",
+    "color": "カラー",
+    "active": "有効"
   },
   "permissions": {
     "manage_users": {
