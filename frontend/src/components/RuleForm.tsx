@@ -74,7 +74,18 @@ const RuleForm: React.FC = () => {
         navigate(`/projects/${projectId}/rules`);
       }, 1500);
     } catch (error: any) {
+      console.error('Rule creation error:', error);
       const errorData = error.response?.data;
+      
+      // 認証エラーの場合はログイン画面にリダイレクト
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        setError('認証エラーが発生しました。再度ログインしてください。');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+        return;
+      }
+      
       if (errorData?.details && errorData?.suggestion) {
         setError(`${errorData.error}\n\n詳細: ${errorData.details}\n\n提案: ${errorData.suggestion}`);
       } else {

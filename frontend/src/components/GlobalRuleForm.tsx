@@ -68,6 +68,17 @@ const GlobalRuleForm: React.FC = () => {
         navigate('/');
       }, 1500);
     } catch (error: any) {
+      console.error('Global rule creation error:', error);
+      
+      // 認証エラーの場合はログイン画面にリダイレクト
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        setError('認証エラーが発生しました。再度ログインしてください。');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+        return;
+      }
+      
       setError(error.response?.data?.error || t('common.error'));
     } finally {
       setLoading(false);
