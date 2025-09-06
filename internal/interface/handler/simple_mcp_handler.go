@@ -247,10 +247,10 @@ func (h *SimpleMCPHandler) sendMCPError(c *gin.Context, id string, code int, mes
 
 // HandleWebSocket リアルタイムMCP通信のためのWebSocket接続を処理
 func (h *SimpleMCPHandler) HandleWebSocket(c *gin.Context) {
-	// Upgrade to WebSocket connection
+	// WebSocket接続にアップグレード
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return true // Allow all origins for development
+			return true // 開発用にすべてのオリジンを許可
 		},
 	}
 
