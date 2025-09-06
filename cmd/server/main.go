@@ -452,6 +452,9 @@ func main() {
 		admin.POST("/roles", adminHandler.CreateRole)
 		admin.PUT("/roles/:name", adminHandler.UpdateRole)
 		admin.DELETE("/roles/:name", adminHandler.DeleteRole)
+		// 管理者専用の一括エクスポート・インポート
+		admin.POST("/bulk-export", adminHandler.BulkExport)
+		admin.POST("/bulk-import", adminHandler.BulkImport)
 	}
 
 	if projectRepo != nil {
