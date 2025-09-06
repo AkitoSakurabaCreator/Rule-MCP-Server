@@ -1,4 +1,4 @@
-extends: ["@stoplight/spectral/rulesets/oas"]
+extends: "@stoplight/spectral/rulesets/oas"
 rules:
   # カスタムルールを追加したい場合はここに記述
   # 例: 必須フィールドのチェックなど
