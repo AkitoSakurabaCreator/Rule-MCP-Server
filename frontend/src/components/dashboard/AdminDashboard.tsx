@@ -28,6 +28,8 @@ import {
   DialogActions,
   Snackbar,
   Tooltip,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -103,6 +105,7 @@ const AdminDashboard: React.FC = () => {
     systemLoad: '0%',
   });
   const [mcpStats, setMcpStats] = useState<MCPStatsType[]>([]);
+  const [mcpPerf, setMcpPerf] = useState<{ avgMs: number; successRate: number; errorRate: number; p95Ms: number }>({ avgMs: 0, successRate: 0, errorRate: 0, p95Ms: 0 });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [systemLogs, setSystemLogs] = useState<SystemLogType[]>([]);
@@ -124,6 +127,8 @@ const AdminDashboard: React.FC = () => {
   const [openAddApiKey, setOpenAddApiKey] = useState(false);
   const [apiKeyForm, setApiKeyForm] = useState({ name: '', accessLevel: 'user' });
   const [openDeleteApiKey, setOpenDeleteApiKey] = useState<null | ApiKey>(null);
+  const [openEditApiKey, setOpenEditApiKey] = useState<null | ApiKey>(null);
+  const [apiKeyEditForm, setApiKeyEditForm] = useState<{ name: string; description: string; isActive: boolean }>({ name: '', description: '', isActive: true });
   const [roles, setRoles] = useState<RoleType[]>([]);
   const [openAddRole, setOpenAddRole] = useState(false);
   const [openEditRole, setOpenEditRole] = useState<null | RoleType>(null);
@@ -134,18 +139,23 @@ const AdminDashboard: React.FC = () => {
     if (preset === 'admin') setRoleForm((r) => ({ ...r, permissions: { manage_users: true, manage_rules: true, manage_roles: true } }));
   };
 
+  // 設定状態
+  const [settings, setSettings] = useState<{ defaultAccessLevel: string; requestsPerMinute: number }>({ defaultAccessLevel: 'public', requestsPerMinute: 100 });
+
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
         setLoading(true);
         setError(null);
-        const [s, u, k, m, logs] = await Promise.all([
+        const [s, u, k, m, logs, perf, conf] = await Promise.all([
           adminApi.getStats(),
           canManageUsers ? adminApi.getUsers() : Promise.resolve([]),
           adminApi.getApiKeys(),
           adminApi.getMCPStats(),
           adminApi.getSystemLogs(),
+          adminApi.getMCPPerformance(),
+          adminApi.getSettings(),
         ]);
         const rls = canManageRoles ? await adminApi.getRoles() : [];
         if (!mounted) return;
@@ -173,6 +183,12 @@ const AdminDashboard: React.FC = () => {
         }, { INFO: 0, WARN: 0, ERROR: 0 });
         setLogCounts(counts);
         setRoles(rls);
+        // MCP perf
+        setMcpPerf(perf as any);
+        // settings
+        const da = (conf as any).defaultAccessLevel || 'public';
+        const rpm = parseInt((conf as any).requestsPerMinute || '100', 10) || 100;
+        setSettings({ defaultAccessLevel: da, requestsPerMinute: rpm });
       } catch (e: any) {
         setError(e?.message || 'Failed to load admin data');
       } finally {
@@ -185,13 +201,15 @@ const AdminDashboard: React.FC = () => {
     };
   }, [canManageUsers, canManageRoles]);
 
-  // CPU率（systemLoadを含む統計）を定期更新（5秒間隔）
+  // CPU率（systemLoad）とMCPパフォーマンスを定期更新（5秒間隔）
   useEffect(() => {
     let timer: any;
     const tick = async () => {
       try {
         const s = await adminApi.getStats();
         setStats(s);
+        const perf = await adminApi.getMCPPerformance();
+        setMcpPerf(perf as any);
       } catch (e: any) {
         // ignore transient errors
       }
@@ -520,7 +538,7 @@ const AdminDashboard: React.FC = () => {
                   <TableCell>{apiKey.lastUsed}</TableCell>
                   {canManageUsers && (
                   <TableCell>
-                    <IconButton size="small" color="primary">
+                    <IconButton size="small" color="primary" onClick={() => { setOpenEditApiKey(apiKey); setApiKeyEditForm({ name: apiKey.name, description: '', isActive: apiKey.status === 'active' }); }}>
                       <EditIcon />
                     </IconButton>
                     <IconButton
@@ -580,6 +598,41 @@ const AdminDashboard: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Edit API Key Dialog */}
+      <Dialog open={!!openEditApiKey} onClose={() => setOpenEditApiKey(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{t('dashboard.apiKeyManagement')}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.name')} fullWidth value={apiKeyEditForm.name} onChange={(e) => setApiKeyEditForm({ ...apiKeyEditForm, name: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <TextField label={t('dashboard.description') || 'Description'} fullWidth value={apiKeyEditForm.description} onChange={(e) => setApiKeyEditForm({ ...apiKeyEditForm, description: e.target.value })} />
+            </Grid>
+            <Grid sx={{ width: '100%' }}>
+              <FormControlLabel control={<Switch checked={apiKeyEditForm.isActive} onChange={(e) => setApiKeyEditForm({ ...apiKeyEditForm, isActive: e.target.checked })} />} label={apiKeyEditForm.isActive ? (t('dashboard.active') as string) : (t('dashboard.inactive') as string)} />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEditApiKey(null)}>{t('common.cancel')}</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              if (!openEditApiKey) return;
+              try {
+                await adminApi.updateApiKey(openEditApiKey.id, { name: apiKeyEditForm.name, description: apiKeyEditForm.description, isActive: apiKeyEditForm.isActive });
+                setApiKeys(prev => prev.map(k => k.id === openEditApiKey.id ? { ...k, name: apiKeyEditForm.name, status: apiKeyEditForm.isActive ? 'active' : 'inactive' } : k));
+                setOpenEditApiKey(null);
+                setSnackbar({ open: true, message: t('dashboard.userUpdateSuccess') as string, severity: 'success' });
+              } catch (e: any) {
+                setSnackbar({ open: true, message: t('dashboard.apiKeyDeleteFailed') as string, severity: 'error' });
+              }
+            }}
+          >{t('common.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Delete API Key Dialog */}
       <Dialog open={!!openDeleteApiKey} onClose={() => setOpenDeleteApiKey(null)}>
         <DialogTitle>{t('common.delete') || 'Delete'}</DialogTitle>
@@ -621,13 +674,13 @@ const AdminDashboard: React.FC = () => {
                 </Typography>
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>{t('dashboard.defaultAccessLevel')}</InputLabel>
-                  <Select defaultValue="public">
+                  <Select value={settings.defaultAccessLevel} label={t('dashboard.defaultAccessLevel')} onChange={(e) => setSettings(s => ({ ...s, defaultAccessLevel: e.target.value as string }))}>
                     <MenuItem value="public">Public</MenuItem>
                     <MenuItem value="user">User</MenuItem>
                     <MenuItem value="admin">Admin</MenuItem>
                   </Select>
                 </FormControl>
-                <Button variant="contained">
+                <Button variant="contained" onClick={async () => { try { await adminApi.updateSettings(settings as any); setSnackbar({ open: true, message: t('dashboard.saveSettings') as string, severity: 'success' }); } catch { setSnackbar({ open: true, message: t('dashboard.loadError') as string, severity: 'error' }); } }}>
                   {t('dashboard.saveSettings')}
                 </Button>
               </CardContent>
@@ -644,10 +697,11 @@ const AdminDashboard: React.FC = () => {
                   fullWidth
                   label={t('dashboard.requestsPerMinute')}
                   type="number"
-                  defaultValue={100}
+                  value={settings.requestsPerMinute}
+                  onChange={(e) => setSettings(s => ({ ...s, requestsPerMinute: parseInt(e.target.value || '0', 10) || 0 }))}
                   sx={{ mb: 2 }}
                 />
-                <Button variant="contained">
+                <Button variant="contained" onClick={async () => { try { await adminApi.updateSettings(settings as any); setSnackbar({ open: true, message: t('dashboard.updateLimits') as string, severity: 'success' }); } catch { setSnackbar({ open: true, message: t('dashboard.loadError') as string, severity: 'error' }); } }}>
                   {t('dashboard.updateLimits')}
                 </Button>
               </CardContent>
@@ -744,14 +798,14 @@ const AdminDashboard: React.FC = () => {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   {t('dashboard.mcpPerformance')}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {t('dashboard.averageResponseTime')}: 45ms
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {t('dashboard.averageResponseTime')}: {mcpPerf.avgMs}ms (p95: {mcpPerf.p95Ms}ms)
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {t('dashboard.successRate')}: 99.8%
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {t('dashboard.successRate')}: {mcpPerf.successRate.toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {t('dashboard.errorRate')}: 0.2%
+                  {t('dashboard.errorRate')}: {mcpPerf.errorRate.toFixed(1)}%
                 </Typography>
               </CardContent>
             </Card>
