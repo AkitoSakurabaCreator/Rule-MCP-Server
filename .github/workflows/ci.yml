@@ -22,13 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - name: Install deps (frontend)
         run: pnpm -C frontend install --no-frozen-lockfile
       - name: Lint/Test/Build (frontend)
@@ -55,5 +55,5 @@ jobs:
       - name: Install Spectral
         run: npm i -g @stoplight/spectral-cli
       - name: Lint OpenAPI
-        run: spectral lint openapi/openapi.yaml --fail-severity=warn
+        run: spectral lint openapi/openapi.yaml --fail-severity=warn --ruleset @stoplight/spectral/rulesets/oas
 
