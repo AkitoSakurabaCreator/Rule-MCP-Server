@@ -46,8 +46,17 @@ api.interceptors.response.use(
     // Attach normalized error for UI layers
     (error as any).normalized = unified;
 
-    // Example UX hooks (callers can use):
-    // if (unified.code === 'unauthorized') redirectToLogin();
+    // 認証エラーの場合は自動的にログイン画面にリダイレクト
+    if (unified.status === 401 || unified.status === 403) {
+      console.warn('Authentication error detected, redirecting to login...');
+      // localStorageをクリア
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      // ログイン画面にリダイレクト（現在のページがログイン画面でない場合のみ）
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
 
     return Promise.reject(error);
   }
