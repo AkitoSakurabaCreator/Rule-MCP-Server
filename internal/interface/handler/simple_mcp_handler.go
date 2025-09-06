@@ -216,7 +216,7 @@ func containsPattern(code, pattern string) bool {
 	return len(code) > 0 && len(pattern) > 0
 }
 
-// sendMCPResponse sends a successful MCP response
+// sendMCPResponse 成功したMCPレスポンスを送信
 func (h *SimpleMCPHandler) sendMCPResponse(c *gin.Context, id string, result interface{}) {
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
@@ -232,7 +232,7 @@ func (h *SimpleMCPHandler) sendMCPResponse(c *gin.Context, id string, result int
 	c.JSON(http.StatusOK, response)
 }
 
-// sendMCPError sends an MCP error response
+// sendMCPError MCPエラーレスポンスを送信
 func (h *SimpleMCPHandler) sendMCPError(c *gin.Context, id string, code int, message string) {
 	response := domain.MCPResponse{
 		ID: id,
@@ -245,7 +245,7 @@ func (h *SimpleMCPHandler) sendMCPError(c *gin.Context, id string, code int, mes
 	c.JSON(http.StatusOK, response)
 }
 
-// HandleWebSocket handles WebSocket connections for real-time MCP communication
+// HandleWebSocket リアルタイムMCP通信のためのWebSocket接続を処理
 func (h *SimpleMCPHandler) HandleWebSocket(c *gin.Context) {
 	// Upgrade to WebSocket connection
 	upgrader := websocket.Upgrader{
