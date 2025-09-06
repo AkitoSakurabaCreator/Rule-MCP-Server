@@ -397,6 +397,69 @@ func (d *PostgresDatabase) GetByLanguage(language string) ([]*domain.Project, er
 	return projects, nil
 }
 
+// LanguageRepository implementation
+type PostgresLanguageRepository struct {
+	DB *sql.DB
+}
+
+func NewPostgresLanguageRepository(db *sql.DB) domain.LanguageRepository {
+	return &PostgresLanguageRepository{DB: db}
+}
+
+func (r *PostgresLanguageRepository) Create(language *domain.Language) error {
+	query := `INSERT INTO languages (code, name, description, icon, color, is_active) VALUES ($1, $2, $3, $4, $5, $6)`
+	_, err := r.DB.Exec(query, language.Code, language.Name, language.Description, language.Icon, language.Color, language.IsActive)
+	return mapDBError(err)
+}
+
+func (r *PostgresLanguageRepository) GetByCode(code string) (*domain.Language, error) {
+	query := `SELECT code, name, description, icon, color, is_active FROM languages WHERE code = $1`
+	var language domain.Language
+	err := r.DB.QueryRow(query, code).Scan(
+		&language.Code, &language.Name, &language.Description,
+		&language.Icon, &language.Color, &language.IsActive,
+	)
+	if err != nil {
+		return nil, mapDBError(err)
+	}
+	return &language, nil
+}
+
+func (r *PostgresLanguageRepository) GetAll() ([]*domain.Language, error) {
+	query := `SELECT code, name, description, icon, color, is_active FROM languages ORDER BY name`
+	rows, err := r.DB.Query(query)
+	if err != nil {
+		return nil, mapDBError(err)
+	}
+	defer rows.Close()
+
+	var languages []*domain.Language
+	for rows.Next() {
+		var language domain.Language
+		err := rows.Scan(
+			&language.Code, &language.Name, &language.Description,
+			&language.Icon, &language.Color, &language.IsActive,
+		)
+		if err != nil {
+			return nil, mapDBError(err)
+		}
+		languages = append(languages, &language)
+	}
+	return languages, nil
+}
+
+func (r *PostgresLanguageRepository) Update(language *domain.Language) error {
+	query := `UPDATE languages SET name = $1, description = $2, icon = $3, color = $4, is_active = $5 WHERE code = $6`
+	_, err := r.DB.Exec(query, language.Name, language.Description, language.Icon, language.Color, language.IsActive, language.Code)
+	return mapDBError(err)
+}
+
+func (r *PostgresLanguageRepository) Delete(code string) error {
+	query := `DELETE FROM languages WHERE code = $1`
+	_, err := r.DB.Exec(query, code)
+	return mapDBError(err)
+}
+
 // MetricsRepository implementation
 func (m *PostgresMetricsRepository) RecordMCP(method string, status string, durationMs int) error {
 	q := `INSERT INTO mcp_requests (method, status, duration_ms, created_at) VALUES ($1, $2, $3, $4)`

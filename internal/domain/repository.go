@@ -24,6 +24,23 @@ type GlobalRuleRepository interface {
 	Delete(language, ruleID string) error
 }
 
+type Language struct {
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Icon        string `json:"icon"`
+	Color       string `json:"color"`
+	IsActive    bool   `json:"is_active"`
+}
+
+type LanguageRepository interface {
+	Create(language *Language) error
+	GetByCode(code string) (*Language, error)
+	GetAll() ([]*Language, error)
+	Update(language *Language) error
+	Delete(code string) error
+}
+
 type ValidationRepository interface {
 	ValidateCode(projectID, code string) (*ValidationResult, error)
 }
