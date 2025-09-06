@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
 )
@@ -23,12 +24,15 @@ func hasPerm(c *gin.Context, key string) bool {
 }
 
 type AdminHandler struct {
-	userRepo       domain.UserRepository
-	projectRepo    domain.ProjectRepository
-	ruleRepo       domain.RuleRepository
-	globalRuleRepo domain.GlobalRuleRepository
-	ruleOptionRepo domain.RuleOptionRepository
-	roleRepo       domain.RoleRepository
+	userRepo          domain.UserRepository
+	projectRepo       domain.ProjectRepository
+	ruleRepo          domain.RuleRepository
+	globalRuleRepo    domain.GlobalRuleRepository
+	ruleOptionRepo    domain.RuleOptionRepository
+	roleRepo          domain.RoleRepository
+	projectUseCase    *usecase.ProjectUseCase
+	ruleUseCase       *usecase.RuleUseCase
+	globalRuleUseCase *usecase.GlobalRuleUseCase
 }
 
 type AdminStats struct {
@@ -75,13 +79,20 @@ type SystemLog struct {
 }
 
 func NewAdminHandler(userRepo domain.UserRepository, projectRepo domain.ProjectRepository, ruleRepo domain.RuleRepository, globalRuleRepo domain.GlobalRuleRepository, ruleOptionRepo domain.RuleOptionRepository, roleRepo domain.RoleRepository) *AdminHandler {
+	projectUseCase := usecase.NewProjectUseCase(projectRepo)
+	ruleUseCase := usecase.NewRuleUseCase(ruleRepo, globalRuleRepo, projectRepo)
+	globalRuleUseCase := usecase.NewGlobalRuleUseCase(globalRuleRepo)
+
 	return &AdminHandler{
-		userRepo:       userRepo,
-		projectRepo:    projectRepo,
-		ruleRepo:       ruleRepo,
-		globalRuleRepo: globalRuleRepo,
-		ruleOptionRepo: ruleOptionRepo,
-		roleRepo:       roleRepo,
+		userRepo:          userRepo,
+		projectRepo:       projectRepo,
+		ruleRepo:          ruleRepo,
+		globalRuleRepo:    globalRuleRepo,
+		ruleOptionRepo:    ruleOptionRepo,
+		roleRepo:          roleRepo,
+		projectUseCase:    projectUseCase,
+		ruleUseCase:       ruleUseCase,
+		globalRuleUseCase: globalRuleUseCase,
 	}
 }
 
@@ -592,7 +603,7 @@ func (h *AdminHandler) BulkExport(c *gin.Context) {
 
 	// プロジェクトルールの取得
 	if req.Scope == "all" || req.Scope == "projects" {
-		projects, err := h.projectUseCase.GetAllProjects()
+		projects, err := h.projectUseCase.GetProjects()
 		if err == nil {
 			projectRules := make(map[string]interface{})
 			for _, project := range projects {
@@ -610,8 +621,16 @@ func (h *AdminHandler) BulkExport(c *gin.Context) {
 
 	// グローバルルールの取得
 	if req.Scope == "all" || req.Scope == "global" {
-		globalRules, err := h.globalRuleUseCase.GetAllGlobalRules()
-		if err == nil {
+		// 主要な言語のグローバルルールを取得
+		languages := []string{"javascript", "typescript", "python", "go", "java", "cpp", "csharp"}
+		globalRules := make(map[string]interface{})
+		for _, lang := range languages {
+			rules, err := h.globalRuleUseCase.GetGlobalRules(lang)
+			if err == nil && len(rules) > 0 {
+				globalRules[lang] = rules
+			}
+		}
+		if len(globalRules) > 0 {
 			exportData["globalRules"] = globalRules
 		}
 	}
@@ -697,7 +716,7 @@ func (h *AdminHandler) BulkImport(c *gin.Context) {
 	// グローバルルールのインポート
 	if globalRules, ok := req.Data["globalRules"].([]interface{}); ok {
 		for _, ruleData := range globalRules {
-			if rule, ok := ruleData.(map[string]interface{}); ok {
+			if _, ok := ruleData.(map[string]interface{}); ok {
 				// グローバルルールのインポート処理
 				// 簡易実装（実際のプロダクションでは適切な実装が必要）
 				importedCount++
