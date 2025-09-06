@@ -12,11 +12,13 @@ import (
 
 type GlobalRuleHandler struct {
 	globalRuleUseCase *usecase.GlobalRuleUseCase
+	languageRepo      domain.LanguageRepository
 }
 
-func NewGlobalRuleHandler(globalRuleUseCase *usecase.GlobalRuleUseCase) *GlobalRuleHandler {
+func NewGlobalRuleHandler(globalRuleUseCase *usecase.GlobalRuleUseCase, languageRepo domain.LanguageRepository) *GlobalRuleHandler {
 	return &GlobalRuleHandler{
 		globalRuleUseCase: globalRuleUseCase,
+		languageRepo:      languageRepo,
 	}
 }
 
@@ -294,34 +296,31 @@ func (h *GlobalRuleHandler) CreateLanguage(c *gin.Context) {
 	}
 
 	// 言語コードの重複チェック
-	existingLanguages, err := h.globalRuleUseCase.GetAllLanguages()
-	if err != nil {
-		httpx.JSONFromError(c, err)
+	_, err := h.languageRepo.GetByCode(req.Code)
+	if err == nil {
+		httpx.JSONError(c, http.StatusConflict, httpx.CodeConflict, "Language code already exists", nil)
 		return
 	}
 
-	for _, lang := range existingLanguages {
-		if lang == req.Code {
-			httpx.JSONError(c, http.StatusConflict, httpx.CodeConflict, "Language code already exists", nil)
-			return
-		}
-	}
-
-	// 言語作成処理（簡易実装）
-	languageInfo := LanguageInfo{
+	// 言語を作成
+	language := &domain.Language{
 		Code:        req.Code,
 		Name:        req.Name,
 		Description: req.Description,
 		Icon:        req.Icon,
 		Color:       req.Color,
 		IsActive:    true,
-		CreatedAt:   time.Now().Format(time.RFC3339),
-		UpdatedAt:   time.Now().Format(time.RFC3339),
+	}
+
+	err = h.languageRepo.Create(language)
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message":  "Language created successfully",
-		"language": languageInfo,
+		"language": language,
 	})
 }
 
@@ -346,24 +345,40 @@ func (h *GlobalRuleHandler) UpdateLanguage(c *gin.Context) {
 		return
 	}
 
-	// 言語更新処理（簡易実装）
-	languageInfo := LanguageInfo{
-		Code:        languageCode,
-		Name:        req.Name,
-		Description: req.Description,
-		Icon:        req.Icon,
-		Color:       req.Color,
-		IsActive:    true,
-		UpdatedAt:   time.Now().Format(time.RFC3339),
+	// 既存の言語を取得
+	language, err := h.languageRepo.GetByCode(languageCode)
+	if err != nil {
+		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "Language not found", nil)
+		return
 	}
 
+	// フィールドを更新
+	if req.Name != "" {
+		language.Name = req.Name
+	}
+	if req.Description != "" {
+		language.Description = req.Description
+	}
+	if req.Icon != "" {
+		language.Icon = req.Icon
+	}
+	if req.Color != "" {
+		language.Color = req.Color
+	}
 	if req.IsActive != nil {
-		languageInfo.IsActive = *req.IsActive
+		language.IsActive = *req.IsActive
+	}
+
+	// データベースを更新
+	err = h.languageRepo.Update(language)
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Language updated successfully",
-		"language": languageInfo,
+		"language": language,
 	})
 }
 
@@ -382,8 +397,19 @@ func (h *GlobalRuleHandler) DeleteLanguage(c *gin.Context) {
 		return
 	}
 
-	// 言語削除処理（簡易実装）
-	// 実際の実装では、関連するルールの確認が必要
+	// 言語が存在するかチェック
+	_, err := h.languageRepo.GetByCode(languageCode)
+	if err != nil {
+		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "Language not found", nil)
+		return
+	}
+
+	// 言語を削除
+	err = h.languageRepo.Delete(languageCode)
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Language deleted successfully",
