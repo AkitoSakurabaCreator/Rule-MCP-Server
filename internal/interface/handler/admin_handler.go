@@ -369,7 +369,7 @@ func (h *AdminHandler) DeleteApiKey(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "API Key deleted successfully"})
 }
 
-// Rule options
+// ルールオプション
 func (h *AdminHandler) GetRuleOptions(c *gin.Context) {
 	kind := c.Query("kind")
 	if kind != "type" && kind != "severity" {
@@ -444,7 +444,7 @@ func (h *AdminHandler) DeleteRuleOption(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Option deleted"})
 }
 
-// Roles management
+// ロール管理
 func (h *AdminHandler) GetRoles(c *gin.Context) {
 	if !hasPerm(c, "manage_roles") {
 		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_roles required", nil)
