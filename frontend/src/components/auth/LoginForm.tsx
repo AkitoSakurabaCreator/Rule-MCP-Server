@@ -32,13 +32,8 @@ const LoginForm: React.FC = () => {
 
     try {
       await login(formData.username, formData.password);
-      // 管理者の場合はダッシュボード、一般ユーザーの場合はプロジェクト一覧
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/');
-      }
+      // ログイン後はトップページ（ルール一覧）に遷移
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.loginError'));
     } finally {

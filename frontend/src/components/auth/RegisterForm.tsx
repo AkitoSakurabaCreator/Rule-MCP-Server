@@ -81,7 +81,7 @@ const RegisterForm: React.FC = () => {
         password: formData.password,
         full_name: formData.full_name,
       });
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.registerError'));
     } finally {
