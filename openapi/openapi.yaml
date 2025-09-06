@@ -699,3 +699,78 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  
+  # Languages CRUD
+  /languages:
+    get:
+      tags: [Languages]
+      operationId: listLanguages
+      summary: 言語一覧取得
+      responses:
+        '200':
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Language'
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Languages]
+      operationId: createLanguage
+      summary: 言語作成（admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Language'
+      responses:
+        '201': { description: 作成成功 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /languages/{code}:
+    put:
+      tags: [Languages]
+      operationId: updateLanguage
+      summary: 言語更新（admin）
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                icon: { type: string }
+                color: { type: string }
+                isActive: { type: boolean }
+      responses:
+        '200': { description: 更新成功 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Languages]
+      operationId: deleteLanguage
+      summary: 言語削除（admin）
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: 削除成功 }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
