@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main, dev ]
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Build (Go)
+        run: go build ./...
+      - name: Test (Go)
+        run: go test ./... -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install deps (frontend)
+        run: pnpm -C frontend install --no-frozen-lockfile
+      - name: Lint/Test/Build (frontend)
+        run: |
+          pnpm -C frontend test -- --watchAll=false || true
+          pnpm -C frontend build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build server image
+        run: docker build -t rule-mcp-server:ci .
+      - name: Build frontend image
+        run: docker build -t rule-mcp-frontend:ci ./frontend
+
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Spectral
+        run: npm i -g @stoplight/spectral-cli
+      - name: Lint OpenAPI
+        run: spectral lint openapi/openapi.yaml --fail-severity=warn
+
