@@ -803,6 +803,34 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 - **💖 Sponsor**: [GitHub Sponsors](https://github.com/sponsors/AkitoSakurabaCreator)
 
+## 📋 Contributing Guidelines
+
+### Contribution Flow
+
+1. **Create Issue**: Bug reports or feature proposals
+2. **Fork**: Fork the repository
+3. **Create Branch**: `feature/your-feature` or `fix/your-fix`
+4. **Development**: Code changes and test additions
+5. **Pull Request**: Submit with detailed description
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## 📜 License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
+## 🔒 Security
+
+If you discover a security issue, please follow the instructions in [SECURITY.md](SECURITY.md).
+
+## 📝 Code of Conduct
+
+This project follows the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## 📈 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the latest changes.
+
 ---
 
 **⭐ If this project is helpful, please give it a star on GitHub!**
