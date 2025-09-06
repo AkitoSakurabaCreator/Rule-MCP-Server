@@ -294,11 +294,11 @@ func (h *SimpleMCPHandler) handleWebSocketGetRules(conn *websocket.Conn, req dom
 		return
 	}
 
-	// Implementation similar to HTTP handler
-	// ... (same logic as handleGetRules)
+	// HTTPハンドラーと同様の実装
+	// ... (handleGetRulesと同じロジック)
 }
 
-// handleWebSocketValidateCode handles validateCode over WebSocket
+// handleWebSocketValidateCode WebSocket経由でvalidateCodeを処理
 func (h *SimpleMCPHandler) handleWebSocketValidateCode(conn *websocket.Conn, req domain.MCPRequest) {
 	var params domain.MCPValidationRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -306,11 +306,11 @@ func (h *SimpleMCPHandler) handleWebSocketValidateCode(conn *websocket.Conn, req
 		return
 	}
 
-	// Implementation similar to HTTP handler
-	// ... (same logic as handleValidateCode)
+	// HTTPハンドラーと同様の実装
+	// ... (handleValidateCodeと同じロジック)
 }
 
-// sendWebSocketResponse sends a response over WebSocket
+// sendWebSocketResponse WebSocket経由でレスポンスを送信
 func (h *SimpleMCPHandler) sendWebSocketResponse(conn *websocket.Conn, id string, result interface{}) {
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
@@ -326,7 +326,7 @@ func (h *SimpleMCPHandler) sendWebSocketResponse(conn *websocket.Conn, id string
 	conn.WriteJSON(response)
 }
 
-// sendWebSocketError sends an error over WebSocket
+// sendWebSocketError WebSocket経由でエラーを送信
 func (h *SimpleMCPHandler) sendWebSocketError(conn *websocket.Conn, id string, code int, message string) {
 	response := domain.MCPResponse{
 		ID: id,
