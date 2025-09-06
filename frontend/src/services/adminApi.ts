@@ -58,6 +58,15 @@ export interface Role {
   is_active?: boolean;
 }
 
+export interface Language {
+  code: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  isActive?: boolean;
+}
+
 // 管理者用APIサービス
 export const adminApi = {
   // 統計データ取得
@@ -167,5 +176,20 @@ export const adminApi = {
   },
   deleteRole: async (name: string): Promise<void> => {
     await api.delete(`/admin/roles/${encodeURIComponent(name)}`);
+  },
+  
+  // 言語管理
+  getLanguages: async (): Promise<Language[]> => {
+    const res = await api.get('/languages');
+    return res.data as Language[];
+  },
+  createLanguage: async (payload: Language): Promise<void> => {
+    await api.post('/languages', payload);
+  },
+  updateLanguage: async (code: string, payload: Partial<Language>): Promise<void> => {
+    await api.put(`/languages/${encodeURIComponent(code)}`, payload);
+  },
+  deleteLanguage: async (code: string): Promise<void> => {
+    await api.delete(`/languages/${encodeURIComponent(code)}`);
   },
 };
