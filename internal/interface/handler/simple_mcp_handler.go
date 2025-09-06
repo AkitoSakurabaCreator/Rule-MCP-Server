@@ -163,7 +163,7 @@ func (h *SimpleMCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequ
 	h.sendMCPResponse(c, req.ID, response)
 }
 
-// handleGetProjectInfo handles the getProjectInfo MCP method
+// handleGetProjectInfo getProjectInfo MCPメソッドを処理
 func (h *SimpleMCPHandler) handleGetProjectInfo(c *gin.Context, req domain.MCPRequest) {
 	var params struct {
 		ProjectID string `json:"project_id"`
@@ -191,7 +191,7 @@ func (h *SimpleMCPHandler) handleGetProjectInfo(c *gin.Context, req domain.MCPRe
 	h.sendMCPResponse(c, req.ID, projectInfo)
 }
 
-// convertGlobalRulesToRules converts GlobalRule to Rule format
+// convertGlobalRulesToRules GlobalRuleをRule形式に変換
 func (h *SimpleMCPHandler) convertGlobalRulesToRules(globalRules []domain.GlobalRule, projectID string) []domain.Rule {
 	rules := make([]domain.Rule, 0, len(globalRules))
 	for _, gr := range globalRules {
@@ -211,7 +211,7 @@ func (h *SimpleMCPHandler) convertGlobalRulesToRules(globalRules []domain.Global
 	return rules
 }
 
-// containsPattern checks if code contains a pattern (simplified)
+// containsPattern コードにパターンが含まれているかチェック（簡易版）
 func containsPattern(code, pattern string) bool {
 	return len(code) > 0 && len(pattern) > 0
 }
