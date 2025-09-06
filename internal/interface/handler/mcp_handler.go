@@ -463,8 +463,59 @@ func (h *MCPHandler) handleWebSocketGetRules(conn *websocket.Conn, req domain.MC
 		return
 	}
 
-	// Implementation similar to HTTP handler
-	// ... (same logic as handleGetRules)
+	if params.ProjectID == "" {
+		h.sendWebSocketError(conn, req.ID, 400, "Project ID is required")
+		return
+	}
+
+	// Get project rules
+	projectRules, err := h.ruleUseCase.GetProjectRules(params.ProjectID)
+	if err != nil {
+		h.sendWebSocketError(conn, req.ID, 500, "Failed to get project rules: "+err.Error())
+		return
+	}
+
+	// Get global rules if language is specified
+	var globalRules []domain.GlobalRule
+	if params.Language != "" {
+		globalRulesPtr, err := h.globalRuleUseCase.GetGlobalRules(params.Language)
+		if err == nil {
+			// Convert pointer slice to value slice
+			globalRules = make([]domain.GlobalRule, len(globalRulesPtr))
+			for i, gr := range globalRulesPtr {
+				globalRules[i] = *gr
+			}
+		}
+	}
+
+	// Combine project rules and global rules
+	appliedRules := make([]domain.Rule, 0, len(projectRules.Rules)+len(globalRules))
+	appliedRules = append(appliedRules, projectRules.Rules...)
+
+	// Convert global rules to project rules format
+	for _, gr := range globalRules {
+		rule := domain.Rule{
+			RuleID:      gr.RuleID,
+			Name:        gr.Name,
+			Description: gr.Description,
+			Type:        gr.Type,
+			Severity:    gr.Severity,
+			Pattern:     gr.Pattern,
+			Message:     gr.Message,
+			IsActive:    gr.IsActive,
+		}
+		appliedRules = append(appliedRules, rule)
+	}
+
+	response := domain.MCPRuleResponse{
+		ProjectID:    params.ProjectID,
+		Language:     params.Language,
+		Rules:        projectRules.Rules,
+		GlobalRules:  globalRules,
+		AppliedRules: appliedRules,
+	}
+
+	h.sendWebSocketResponse(conn, req.ID, response)
 }
 
 // handleWebSocketValidateCode handles validateCode over WebSocket
@@ -475,8 +526,56 @@ func (h *MCPHandler) handleWebSocketValidateCode(conn *websocket.Conn, req domai
 		return
 	}
 
-	// Implementation similar to HTTP handler
-	// ... (same logic as handleValidateCode)
+	if params.ProjectID == "" || params.Code == "" {
+		h.sendWebSocketError(conn, req.ID, 400, "Project ID and code are required")
+		return
+	}
+
+	// Validate code against project rules
+	validationResult, err := h.ruleUseCase.ValidateCode(params.ProjectID, params.Code)
+	if err != nil {
+		h.sendWebSocketError(conn, req.ID, 500, "Failed to validate code: "+err.Error())
+		return
+	}
+
+	// Convert validation result to MCP format
+	issues := make([]domain.ValidationIssue, 0)
+
+	// Convert errors to validation issues
+	for _, errorMsg := range validationResult.Errors {
+		issue := domain.ValidationIssue{
+			RuleID:   "validation-error",
+			RuleName: "Code Validation Error",
+			Severity: "error",
+			Message:  errorMsg,
+		}
+		issues = append(issues, issue)
+	}
+
+	// Convert warnings to validation issues
+	for _, warningMsg := range validationResult.Warnings {
+		issue := domain.ValidationIssue{
+			RuleID:   "validation-warning",
+			RuleName: "Code Validation Warning",
+			Severity: "warning",
+			Message:  warningMsg,
+		}
+		issues = append(issues, issue)
+	}
+
+	// Get applied rules for context
+	projectRules, err := h.ruleUseCase.GetProjectRules(params.ProjectID)
+	if err != nil {
+		projectRules = &domain.ProjectRules{Rules: []domain.Rule{}}
+	}
+
+	response := domain.MCPValidationResponse{
+		IsValid: validationResult.Valid,
+		Issues:  issues,
+		Rules:   projectRules.Rules,
+	}
+
+	h.sendWebSocketResponse(conn, req.ID, response)
 }
 
 // sendWebSocketResponse sends a response over WebSocket

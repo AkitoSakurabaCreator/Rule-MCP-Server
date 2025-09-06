@@ -194,10 +194,9 @@ func (h *RuleHandler) ExportRules(c *gin.Context) {
 		return
 	}
 
-	// 管理者権限チェック
-	userRole, exists := c.Get("userRole")
-	if !exists || userRole != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+	// 権限制御
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
 
@@ -206,43 +205,20 @@ func (h *RuleHandler) ExportRules(c *gin.Context) {
 	if len(req.RuleIDs) > 0 {
 		// 特定のルールIDを指定
 		for _, ruleID := range req.RuleIDs {
-			// ルール取得処理
-			rule := domain.Rule{
-				RuleID:      ruleID,
-				ProjectID:   req.ProjectID,
-				Name:        "Sample Rule " + ruleID,
-				Description: "Exported rule",
-				Pattern:     "pattern_" + ruleID,
-				Message:     "Message for " + ruleID,
-				Severity:    "warning",
-				IsActive:    true,
+			rule, err := h.ruleUseCase.GetRule(req.ProjectID, ruleID)
+			if err != nil {
+				continue // エラーの場合はスキップ
 			}
-			rules = append(rules, rule)
+			rules = append(rules, *rule)
 		}
 	} else {
 		// プロジェクト全体のルール
-		rules = []domain.Rule{
-			{
-				RuleID:      "rule1",
-				ProjectID:   req.ProjectID,
-				Name:        "Sample Rule 1",
-				Description: "Exported rule 1",
-				Pattern:     "pattern_1",
-				Message:     "Message for rule 1",
-				Severity:    "warning",
-				IsActive:    true,
-			},
-			{
-				RuleID:      "rule2",
-				ProjectID:   req.ProjectID,
-				Name:        "Sample Rule 2",
-				Description: "Exported rule 2",
-				Pattern:     "pattern_2",
-				Message:     "Message for rule 2",
-				Severity:    "error",
-				IsActive:    true,
-			},
+		projectRules, err := h.ruleUseCase.GetProjectRules(req.ProjectID)
+		if err != nil {
+			httpx.JSONFromError(c, err)
+			return
 		}
+		rules = projectRules.Rules
 	}
 
 	// フォーマットに応じてレスポンス
@@ -251,12 +227,23 @@ func (h *RuleHandler) ExportRules(c *gin.Context) {
 		c.Header("Content-Type", "application/x-yaml")
 		c.Header("Content-Disposition", "attachment; filename=rules.yaml")
 		// YAML形式での出力（簡易実装）
-		c.String(http.StatusOK, "rules:\n  - name: Sample Rule 1\n    pattern: pattern_1\n  - name: Sample Rule 2\n    pattern: pattern_2")
+		yamlContent := "rules:\n"
+		for _, rule := range rules {
+			yamlContent += "  - name: " + rule.Name + "\n"
+			yamlContent += "    pattern: " + rule.Pattern + "\n"
+			yamlContent += "    message: " + rule.Message + "\n"
+			yamlContent += "    severity: " + rule.Severity + "\n"
+		}
+		c.String(http.StatusOK, yamlContent)
 	case "csv":
 		c.Header("Content-Type", "text/csv")
 		c.Header("Content-Disposition", "attachment; filename=rules.csv")
-		// CSV形式での出力（簡易実装）
-		c.String(http.StatusOK, "RuleID,Name,Pattern,Message,Severity\nrule1,Sample Rule 1,pattern_1,Message for rule 1,warning\nrule2,Sample Rule 2,pattern_2,Message for rule 2,error")
+		// CSV形式での出力
+		csvContent := "RuleID,Name,Pattern,Message,Severity,Type,Description\n"
+		for _, rule := range rules {
+			csvContent += rule.RuleID + "," + rule.Name + "," + rule.Pattern + "," + rule.Message + "," + rule.Severity + "," + rule.Type + "," + rule.Description + "\n"
+		}
+		c.String(http.StatusOK, csvContent)
 	default:
 		// JSON形式（デフォルト）
 		c.JSON(http.StatusOK, gin.H{
@@ -276,10 +263,9 @@ func (h *RuleHandler) ImportRules(c *gin.Context) {
 		return
 	}
 
-	// 管理者権限チェック
-	userRole, exists := c.Get("userRole")
-	if !exists || userRole != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+	// 権限制御
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
 		return
 	}
 
@@ -290,19 +276,30 @@ func (h *RuleHandler) ImportRules(c *gin.Context) {
 
 	for _, rule := range req.Rules {
 		// ルール検証
-		if rule.Name == "" || rule.Pattern == "" {
-			errors = append(errors, "Rule "+rule.RuleID+" has invalid data")
+		if rule.Name == "" {
+			errors = append(errors, "Rule "+rule.RuleID+" has invalid data: name is required")
 			continue
 		}
+
+		// プロジェクトIDを設定
+		rule.ProjectID = req.ProjectID
 
 		// 重複チェック
 		if !req.Overwrite {
-			// 既存ルールとの重複チェック（簡易実装）
-			skippedCount++
+			existingRule, err := h.ruleUseCase.GetRule(req.ProjectID, rule.RuleID)
+			if err == nil && existingRule != nil {
+				skippedCount++
+				continue
+			}
+		}
+
+		// ルール保存処理
+		err := h.ruleUseCase.CreateRule(rule.ProjectID, rule.RuleID, rule.Name, rule.Description, rule.Type, rule.Severity, rule.Pattern, rule.Message)
+		if err != nil {
+			errors = append(errors, "Failed to import rule "+rule.RuleID+": "+err.Error())
 			continue
 		}
 
-		// ルール保存処理（簡易実装）
 		importedCount++
 	}
 
