@@ -54,5 +54,5 @@ jobs:
       - name: Install Spectral
         run: npm i -g @stoplight/spectral-cli
       - name: Lint OpenAPI
-        run: spectral lint openapi/openapi.yaml --fail-severity=warn --ruleset @stoplight/spectral/rulesets/oas
+        run: spectral lint openapi/openapi.yaml --fail-severity=warn --ruleset https://raw.githubusercontent.com/stoplightio/spectral/develop/packages/rulesets/src/oas/index.js
 
