@@ -15,7 +15,7 @@ func NewSimpleMCPHandler() *SimpleMCPHandler {
 	return &SimpleMCPHandler{}
 }
 
-// HandleMCPRequest handles MCP protocol requests
+// HandleMCPRequest MCPプロトコルリクエストを処理
 func (h *SimpleMCPHandler) HandleMCPRequest(c *gin.Context) {
 	var req domain.MCPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -35,7 +35,7 @@ func (h *SimpleMCPHandler) HandleMCPRequest(c *gin.Context) {
 	}
 }
 
-// handleGetRules handles the getRules MCP method
+// handleGetRules getRules MCPメソッドを処理
 func (h *SimpleMCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest) {
 	var params domain.MCPRuleRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -103,7 +103,7 @@ func (h *SimpleMCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest)
 	h.sendMCPResponse(c, req.ID, response)
 }
 
-// handleValidateCode handles the validateCode MCP method
+// handleValidateCode validateCode MCPメソッドを処理
 func (h *SimpleMCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequest) {
 	var params domain.MCPValidationRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
