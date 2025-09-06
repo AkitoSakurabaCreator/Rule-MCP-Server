@@ -155,7 +155,7 @@ func main() {
 	healthHandler := handler.NewHealthHandler()
 	r.GET("/api/v1/health", healthHandler.HealthCheck)
 
-	authHandler := handler.NewAuthHandler(jwtSecret)
+	authHandler := handler.NewAuthHandler(jwtSecret, userRepo, roleRepo)
 	auth := r.Group("/api/v1/auth")
 	{
 		auth.POST("/login", authHandler.Login)
@@ -277,6 +277,86 @@ func main() {
 			}
 			c.JSON(http.StatusOK, gin.H{"message": "API Key deleted successfully"})
 		})
+		// Update API key (name/description/is_active)
+		admin.PUT("/api-keys/:id", func(c *gin.Context) {
+			if db == nil || db.DB == nil {
+				httpx.JSONError(c, http.StatusServiceUnavailable, httpx.CodeInternal, "Database not available", nil)
+				return
+			}
+			id := c.Param("id")
+			var req struct {
+				Name        *string `json:"name"`
+				Description *string `json:"description"`
+				IsActive    *bool   `json:"isActive"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+				return
+			}
+			q := "UPDATE api_keys SET updated_at = NOW()"
+			args := []interface{}{}
+			idx := 1
+			if req.Name != nil {
+				q += ", name = $" + fmt.Sprint(idx)
+				args = append(args, *req.Name)
+				idx++
+			}
+			if req.Description != nil {
+				q += ", description = $" + fmt.Sprint(idx)
+				args = append(args, *req.Description)
+				idx++
+			}
+			if req.IsActive != nil {
+				q += ", is_active = $" + fmt.Sprint(idx)
+				args = append(args, *req.IsActive)
+				idx++
+			}
+			q += " WHERE id = $" + fmt.Sprint(idx)
+			args = append(args, id)
+			if _, err := db.DB.Exec(q, args...); err != nil {
+				httpx.JSONFromError(c, err)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "API Key updated"})
+		})
+		// Settings: simple key-value store
+		admin.GET("/settings", func(c *gin.Context) {
+			if db == nil || db.DB == nil {
+				c.JSON(http.StatusOK, gin.H{"defaultAccessLevel": "public", "requestsPerMinute": 100})
+				return
+			}
+			rows, err := db.DB.Query(`SELECT key, value FROM settings`)
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{"defaultAccessLevel": "public", "requestsPerMinute": 100})
+				return
+			}
+			defer rows.Close()
+			conf := map[string]interface{}{}
+			for rows.Next() {
+				var k string
+				var v string
+				if err := rows.Scan(&k, &v); err == nil {
+					conf[k] = v
+				}
+			}
+			c.JSON(http.StatusOK, conf)
+		})
+		admin.PUT("/settings", func(c *gin.Context) {
+			if db == nil || db.DB == nil {
+				httpx.JSONError(c, http.StatusServiceUnavailable, httpx.CodeInternal, "Database not available", nil)
+				return
+			}
+			var payload map[string]interface{}
+			if err := c.ShouldBindJSON(&payload); err != nil {
+				httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+				return
+			}
+			_, _ = db.DB.Exec(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`)
+			for k, v := range payload {
+				_, _ = db.DB.Exec(`INSERT INTO settings(key, value, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`, k, fmt.Sprint(v))
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "Settings updated"})
+		})
 		admin.GET("/mcp-stats", func(c *gin.Context) {
 			if metricsRepo == nil {
 				c.JSON(http.StatusOK, []domain.MCPMethodStat{})
@@ -288,6 +368,36 @@ func main() {
 				return
 			}
 			c.JSON(http.StatusOK, s)
+		})
+		// MCP performance aggregates (avg, success rate, error rate, p95) over last 24h
+		admin.GET("/mcp-performance", func(c *gin.Context) {
+			if db == nil || db.DB == nil {
+				c.JSON(http.StatusOK, gin.H{"avgMs": 0, "successRate": 0, "errorRate": 0, "p95Ms": 0})
+				return
+			}
+			row := db.DB.QueryRow(`
+				SELECT 
+					COALESCE(AVG(duration_ms)::INT,0) AS avg_ms,
+					COALESCE(SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END),0) AS ok_cnt,
+					COALESCE(SUM(CASE WHEN status<>'ok' THEN 1 ELSE 0 END),0) AS err_cnt,
+					COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms),0) AS p95
+				FROM mcp_requests 
+				WHERE created_at > NOW() - INTERVAL '24 hours'
+			`)
+			var avgMs int
+			var okCnt, errCnt int
+			var p95 float64
+			if err := row.Scan(&avgMs, &okCnt, &errCnt, &p95); err != nil {
+				c.JSON(http.StatusOK, gin.H{"avgMs": 0, "successRate": 0, "errorRate": 0, "p95Ms": 0})
+				return
+			}
+			total := okCnt + errCnt
+			var succRate, errRate float64
+			if total > 0 {
+				succRate = float64(okCnt) * 100.0 / float64(total)
+				errRate = float64(errCnt) * 100.0 / float64(total)
+			}
+			c.JSON(http.StatusOK, gin.H{"avgMs": avgMs, "successRate": succRate, "errorRate": errRate, "p95Ms": int(p95 + 0.5)})
 		})
 		admin.GET("/system-logs", func(c *gin.Context) {
 			// Return recent MCP request logs as system logs
@@ -335,7 +445,8 @@ func main() {
 		globalRuleUseCase := usecase.NewGlobalRuleUseCase(globalRuleRepo)
 		projectHandler := handler.NewProjectHandler(projectUseCase)
 		ruleHandler := handler.NewRuleHandler(ruleUseCase)
-		globalRuleHandler := handler.NewGlobalRuleHandler(globalRuleUseCase)
+		languageRepo := database.NewPostgresLanguageRepository(db.DB)
+		globalRuleHandler := handler.NewGlobalRuleHandler(globalRuleUseCase, languageRepo)
 		api := r.Group("/api/v1")
 		{
 			api.GET("/projects", projectHandler.GetProjects)
