@@ -9,17 +9,14 @@ import {
   Alert,
   Divider,
   Chip,
-  Grid,
 } from '@mui/material';
 import {
   Person as PersonIcon,
-  Email as EmailIcon,
   Security as SecurityIcon,
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
 } from '@mui/icons-material';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 
@@ -32,16 +29,21 @@ interface UserProfileData {
 }
 
 const UserProfile: React.FC = () => {
-  const { t } = useTranslation();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [passwordEditing, setPasswordEditing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+  });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   useEffect(() => {
@@ -85,6 +87,50 @@ const UserProfile: React.FC = () => {
     setFormData({
       username: profile?.username || '',
       email: profile?.email || '',
+    });
+    setError('');
+    setSuccess('');
+  };
+
+  const handlePasswordChange = async () => {
+    try {
+      setError('');
+      setSuccess('');
+      
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        setError('新しいパスワードが一致しません');
+        return;
+      }
+      
+      if (passwordData.newPassword.length < 6) {
+        setError('新しいパスワードは6文字以上で入力してください');
+        return;
+      }
+      
+      await api.put('/auth/change-password', {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+      });
+      
+      setSuccess('パスワードが変更されました');
+      setPasswordEditing(false);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      setError(error.response?.data?.error || 'パスワードの変更に失敗しました');
+    }
+  };
+
+  const handlePasswordCancel = () => {
+    setPasswordEditing(false);
+    setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
     });
     setError('');
     setSuccess('');
@@ -138,8 +184,8 @@ const UserProfile: React.FC = () => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+        <Box sx={{ flex: 1 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -227,9 +273,9 @@ const UserProfile: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: 1 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -242,7 +288,10 @@ const UserProfile: React.FC = () => {
                   アカウント作成日
                 </Typography>
                 <Typography variant="body1">
-                  {new Date(profile.created_at).toLocaleDateString('ja-JP')}
+                  {profile.created_at && profile.created_at !== '0001-01-01T00:00:00Z'
+                    ? new Date(profile.created_at).toLocaleDateString('ja-JP')
+                    : '不明'
+                  }
                 </Typography>
               </Box>
 
@@ -251,12 +300,73 @@ const UserProfile: React.FC = () => {
                   最終ログイン
                 </Typography>
                 <Typography variant="body1">
-                  {profile.last_login 
+                  {profile.last_login && profile.last_login !== '0001-01-01T00:00:00Z'
                     ? new Date(profile.last_login).toLocaleString('ja-JP')
                     : '未ログイン'
                   }
                 </Typography>
               </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <SecurityIcon />
+                パスワード変更
+              </Typography>
+
+              {passwordEditing ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="現在のパスワード"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    size="small"
+                  />
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="新しいパスワード"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                    size="small"
+                    helperText="6文字以上で入力してください"
+                  />
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="新しいパスワード（確認）"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    size="small"
+                  />
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="contained"
+                      onClick={handlePasswordChange}
+                      size="small"
+                    >
+                      パスワード変更
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handlePasswordCancel}
+                      size="small"
+                    >
+                      キャンセル
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <Button
+                  variant="outlined"
+                  onClick={() => setPasswordEditing(true)}
+                  size="small"
+                >
+                  パスワードを変更
+                </Button>
+              )}
 
               <Divider sx={{ my: 2 }} />
 
@@ -270,8 +380,8 @@ const UserProfile: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 };

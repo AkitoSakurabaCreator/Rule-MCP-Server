@@ -30,6 +30,7 @@ import {
   Tooltip,
   FormControlLabel,
   Switch,
+  Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,6 +41,8 @@ import {
   Settings as SettingsIcon,
   Analytics as AnalyticsIcon,
   Code as CodeIcon,
+  FileDownload as ExportIcon,
+  FileUpload as ImportIcon,
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useTranslation } from 'react-i18next';
@@ -128,6 +131,12 @@ const AdminDashboard: React.FC = () => {
     message: '',
     severity: 'success',
   });
+  const [bulkExportDialogOpen, setBulkExportDialogOpen] = useState(false);
+  const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState('json');
+  const [exportScope, setExportScope] = useState('all');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importOverwrite, setImportOverwrite] = useState(false);
   const [openAddApiKey, setOpenAddApiKey] = useState(false);
   const [apiKeyForm, setApiKeyForm] = useState({ name: '', accessLevel: 'user' });
   const [openDeleteApiKey, setOpenDeleteApiKey] = useState<null | ApiKey>(null);
@@ -230,6 +239,61 @@ const AdminDashboard: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handleBulkExport = async () => {
+    try {
+      setLoading(true);
+      const response = await adminApi.bulkExportRules({
+        format: exportFormat,
+        scope: exportScope,
+      });
+      
+      // ファイルダウンロード
+      const blob = new Blob([JSON.stringify(response, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rules-export-${exportScope}-${new Date().toISOString().split('T')[0]}.${exportFormat}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      setSnackbar({ open: true, message: 'ルールのエクスポートが完了しました', severity: 'success' });
+      setBulkExportDialogOpen(false);
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.message || 'エクスポートに失敗しました', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    if (!importFile) return;
+    
+    try {
+      setLoading(true);
+      const text = await importFile.text();
+      const data = JSON.parse(text);
+      
+      await adminApi.bulkImportRules({
+        data,
+        overwrite: importOverwrite,
+      });
+      
+      setSnackbar({ open: true, message: 'ルールのインポートが完了しました', severity: 'success' });
+      setBulkImportDialogOpen(false);
+      setImportFile(null);
+      setImportOverwrite(false);
+      
+      // データを再読み込み
+      window.location.reload();
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.message || 'インポートに失敗しました', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -351,6 +415,26 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* 一括操作ボタン */}
+      <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+        <Button
+          variant="outlined"
+          startIcon={<ExportIcon />}
+          onClick={() => setBulkExportDialogOpen(true)}
+          disabled={loading}
+        >
+          全ルールエクスポート
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<ImportIcon />}
+          onClick={() => setBulkImportDialogOpen(true)}
+          disabled={loading}
+        >
+          全ルールインポート
+        </Button>
+      </Box>
 
       {/* タブナビゲーション */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
@@ -1238,6 +1322,94 @@ const AdminDashboard: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setOpenEditRole(null)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={async () => { if (!openEditRole) return; await adminApi.updateRole(openEditRole.name, { description: roleForm.description, permissions: roleForm.permissions, is_active: roleForm.is_active }); setOpenEditRole(null); const list = await adminApi.getRoles(); setRoles(list); }}>{t('common.save')}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 一括エクスポートダイアログ */}
+      <Dialog open={bulkExportDialogOpen} onClose={() => setBulkExportDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>全ルールエクスポート</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>エクスポート範囲</InputLabel>
+              <Select
+                value={exportScope}
+                onChange={(e) => setExportScope(e.target.value)}
+                label="エクスポート範囲"
+              >
+                <MenuItem value="all">全プロジェクト + グローバルルール</MenuItem>
+                <MenuItem value="projects">プロジェクトルールのみ</MenuItem>
+                <MenuItem value="global">グローバルルールのみ</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>フォーマット</InputLabel>
+              <Select
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value)}
+                label="フォーマット"
+              >
+                <MenuItem value="json">JSON</MenuItem>
+                <MenuItem value="yaml">YAML</MenuItem>
+                <MenuItem value="csv">CSV</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkExportDialogOpen(false)}>キャンセル</Button>
+          <Button variant="contained" onClick={handleBulkExport} disabled={loading}>
+            {loading ? 'エクスポート中...' : 'エクスポート'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 一括インポートダイアログ */}
+      <Dialog open={bulkImportDialogOpen} onClose={() => setBulkImportDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>全ルールインポート</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<ImportIcon />}
+            >
+              ファイルを選択
+              <input
+                type="file"
+                hidden
+                accept=".json,.yaml,.yml"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              />
+            </Button>
+            {importFile && (
+              <Typography variant="body2" color="text.secondary">
+                選択されたファイル: {importFile.name}
+              </Typography>
+            )}
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={importOverwrite}
+                  onChange={(e) => setImportOverwrite(e.target.checked)}
+                />
+              }
+              label="既存のルールを上書きする"
+            />
+            <Alert severity="warning">
+              インポート前に現在のルールをエクスポートしてバックアップを取ることをお勧めします。
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkImportDialogOpen(false)}>キャンセル</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleBulkImport} 
+            disabled={loading || !importFile}
+          >
+            {loading ? 'インポート中...' : 'インポート'}
+          </Button>
         </DialogActions>
       </Dialog>
 
