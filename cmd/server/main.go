@@ -98,8 +98,17 @@ func main() {
 	r.Use(httpx.RecoveryJSON())
 	r.Use(httpx.RequestID())
 
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if cfg.IsProduction() && allowedOrigins == "" {
+		log.Fatal("ALLOWED_ORIGINS must be set in production")
+	}
 	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		if allowedOrigins != "" {
+			parts := strings.Split(allowedOrigins, ",")
+			c.Header("Access-Control-Allow-Origin", strings.TrimSpace(parts[0]))
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
+		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 		if c.Request.Method == "OPTIONS" {
@@ -110,6 +119,9 @@ func main() {
 	})
 
 	jwtSecret := os.Getenv("JWT_SECRET")
+	if cfg.IsProduction() && jwtSecret == "" {
+		log.Fatal("JWT_SECRET must be set in production")
+	}
 	if jwtSecret == "" {
 		jwtSecret = "default-secret-key-change-in-production"
 	}
@@ -171,6 +183,9 @@ func main() {
 	if projectRepo != nil {
 		adminHandler = handler.NewAdminHandler(userRepo, projectRepo, ruleRepo, globalRuleRepo, ruleOptionRepo, roleRepo)
 	} else {
+		if cfg.IsProduction() {
+			log.Fatal("Database repositories are not initialized in production")
+		}
 		adminHandler = handler.NewAdminHandler(nil, nil, nil, nil, nil, nil)
 	}
 	admin := r.Group("/api/v1/admin")
