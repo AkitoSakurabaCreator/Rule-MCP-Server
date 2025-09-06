@@ -84,6 +84,12 @@ export const adminApi = {
     return response.data;
   },
 
+  // MCPパフォーマンス取得
+  getMCPPerformance: async (): Promise<{ avgMs: number; successRate: number; errorRate: number; p95Ms: number }> => {
+    const response = await api.get('/admin/mcp-performance');
+    return response.data;
+  },
+
   // システムログ取得
   getSystemLogs: async (): Promise<SystemLog[]> => {
     const response = await api.get('/admin/system-logs');
@@ -116,6 +122,20 @@ export const adminApi = {
   // APIキー削除
   deleteApiKey: async (id: number): Promise<void> => {
     await api.delete(`/admin/api-keys/${id}`);
+  },
+
+  // APIキー更新
+  updateApiKey: async (id: number, payload: { name?: string; description?: string; isActive?: boolean }): Promise<void> => {
+    await api.put(`/admin/api-keys/${id}`, payload);
+  },
+
+  // 設定取得/更新
+  getSettings: async (): Promise<Record<string, any>> => {
+    const response = await api.get('/admin/settings');
+    return response.data;
+  },
+  updateSettings: async (settings: Record<string, any>): Promise<void> => {
+    await api.put('/admin/settings', settings);
   },
 
   // ルールオプション取得
