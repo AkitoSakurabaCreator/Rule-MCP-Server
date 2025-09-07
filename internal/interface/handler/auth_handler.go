@@ -173,6 +173,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func (h *AuthHandler) Logout(c *gin.Context) {
+	// ログアウトは基本的にクライアント側でトークンを削除するだけ
+	// サーバー側では特に何もする必要がない（JWTはステートレス）
+	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
+}
+
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req struct {
 		Username string `json:"username" binding:"required"`
