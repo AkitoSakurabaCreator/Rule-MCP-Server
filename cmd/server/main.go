@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
@@ -22,8 +21,6 @@ import (
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type ActiveTracker struct {
@@ -46,30 +43,6 @@ func (t *ActiveTracker) CountSince(d time.Duration) int {
 	return c
 }
 
-// generateRandomSecret 暗号学的に安全なランダムシークレットを生成
-func generateRandomSecret(length int) string {
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		log.Fatal("Failed to generate random secret:", err)
-	}
-	return hex.EncodeToString(bytes)
-}
-
-// hashAPIKey bcryptを使用してAPIキーをハッシュ化
-func hashAPIKey(apiKey string) (string, error) {
-	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(apiKey), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hashedBytes), nil
-}
-
-// verifyAPIKey APIキーをハッシュと照合して検証
-func verifyAPIKey(apiKey, hashedKey string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedKey), []byte(apiKey))
-	return err == nil
-}
-
 // generateRandomString セキュアな乱数で英数字文字列を生成
 func generateRandomString(length int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -87,14 +60,6 @@ func generateRandomString(length int) string {
 }
 
 func main() {
-	// .envファイルを読み込み（存在しない場合は無視）
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: .env file not found or could not be loaded: %v", err)
-		log.Println("Continuing with system environment variables...")
-	} else {
-		log.Println("Successfully loaded .env file")
-	}
-
 	cfg := config.LoadConfig()
 
 	var projectRepo domain.ProjectRepository
@@ -123,7 +88,6 @@ func main() {
 		userRepo = database.NewPostgresUserRepository(db.DB)
 		roleRepo = database.NewPostgresRoleRepository(db.DB)
 		metricsRepo = database.NewPostgresMetricsRepository(db.DB)
-
 	}
 
 	if cfg.IsProduction() {
@@ -139,28 +103,14 @@ func main() {
 		log.Fatal("ALLOWED_ORIGINS must be set in production")
 	}
 	r.Use(func(c *gin.Context) {
-		origin := c.Request.Header.Get("Origin")
-
 		if allowedOrigins != "" {
 			parts := strings.Split(allowedOrigins, ",")
-			allowed := false
-			for _, part := range parts {
-				if strings.TrimSpace(part) == origin {
-					allowed = true
-					break
-				}
-			}
-			if allowed {
-				c.Header("Access-Control-Allow-Origin", origin)
-			}
+			c.Header("Access-Control-Allow-Origin", strings.TrimSpace(parts[0]))
 		} else {
 			c.Header("Access-Control-Allow-Origin", "*")
 		}
-
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-		c.Header("Access-Control-Allow-Credentials", "true")
-
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
 			return
@@ -173,10 +123,7 @@ func main() {
 		log.Fatal("JWT_SECRET must be set in production")
 	}
 	if jwtSecret == "" {
-		// 開発環境用のランダム生成（本番環境では必ず環境変数で設定）
-		jwtSecret = generateRandomSecret(32)
-		log.Printf("Generated development JWT secret: %s", jwtSecret)
-		log.Println("WARNING: This is a development secret. In production, set JWT_SECRET environment variable.")
+		jwtSecret = "default-secret-key-change-in-production"
 	}
 	r.Use(func(c *gin.Context) {
 		c.Set("userRole", "public")
@@ -325,13 +272,7 @@ func main() {
 				return
 			}
 			apiKey := fmt.Sprintf("%s_%d_%s", req.AccessLevel, time.Now().Unix(), generateRandomString(16))
-			// APIキーをハッシュ化して保存
-			hashedKey, err := hashAPIKey(apiKey)
-			if err != nil {
-				httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "Failed to hash API key", err.Error())
-				return
-			}
-			_, err = db.DB.Exec(`INSERT INTO api_keys (key_hash, name, access_level, is_active, created_by, created_at, updated_at) VALUES ($1, $2, $3, true, $4, NOW(), NOW())`, hashedKey, req.Name, req.AccessLevel, "admin")
+			_, err := db.DB.Exec(`INSERT INTO api_keys (key_hash, name, access_level, is_active, created_by, created_at, updated_at) VALUES ($1, $2, $3, true, $4, NOW(), NOW())`, apiKey, req.Name, req.AccessLevel, "admin")
 			if err != nil {
 				httpx.JSONFromError(c, err)
 				return
@@ -474,7 +415,7 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"avgMs": avgMs, "successRate": succRate, "errorRate": errRate, "p95Ms": int(p95 + 0.5)})
 		})
 		admin.GET("/system-logs", func(c *gin.Context) {
-			// 最近のMCPリクエストログをシステムログとして返す
+			// Return recent MCP request logs as system logs
 			if db == nil || db.DB == nil {
 				c.JSON(http.StatusOK, []gin.H{})
 				return
@@ -511,9 +452,6 @@ func main() {
 		admin.POST("/roles", adminHandler.CreateRole)
 		admin.PUT("/roles/:name", adminHandler.UpdateRole)
 		admin.DELETE("/roles/:name", adminHandler.DeleteRole)
-		// 管理者専用の一括エクスポート・インポート
-		admin.POST("/bulk-export", adminHandler.BulkExport)
-		admin.POST("/bulk-import", adminHandler.BulkImport)
 	}
 
 	if projectRepo != nil {
@@ -549,10 +487,10 @@ func main() {
 			api.POST("/global-rules/import", globalRuleHandler.ImportGlobalRules)
 		}
 
-		// MCPエンドポイント
+		// MCP endpoints
 		projectDetector := usecase.NewProjectDetector(projectRepo, ruleRepo)
 		mcpHandler := handler.NewMCPHandler(ruleUseCase, globalRuleUseCase, projectDetector)
-		// セッター経由でメトリクスリポジトリを注入
+		// inject metrics repo via setter
 		mcpHandler.SetMetricsRepo(metricsRepo)
 		mcp := r.Group("/mcp")
 		{
