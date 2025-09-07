@@ -17,6 +17,7 @@ type MCPHandler struct {
 	globalRuleUseCase *usecase.GlobalRuleUseCase
 	projectDetector   *usecase.ProjectDetector
 	metricsRepo       domain.MetricsRepository
+	metricsHandler    *MetricsHandler
 }
 
 func NewMCPHandler(ruleUseCase *usecase.RuleUseCase, globalRuleUseCase *usecase.GlobalRuleUseCase, projectDetector *usecase.ProjectDetector) *MCPHandler {
@@ -32,14 +33,27 @@ func (h *MCPHandler) SetMetricsRepo(repo domain.MetricsRepository) {
 	h.metricsRepo = repo
 }
 
+// SetMetricsHandler メトリクスハンドラーを注入
+func (h *MCPHandler) SetMetricsHandler(handler *MetricsHandler) {
+	h.metricsHandler = handler
+}
+
 func (h *MCPHandler) withMetrics(method string, handler func() error) {
 	start := time.Now()
 	status := "ok"
 	if err := handler(); err != nil {
 		status = "error"
 	}
+	duration := time.Since(start)
+
+	// データベースメトリクス
 	if h.metricsRepo != nil {
-		_ = h.metricsRepo.RecordMCP(method, status, int(time.Since(start)/time.Millisecond))
+		_ = h.metricsRepo.RecordMCP(method, status, int(duration/time.Millisecond))
+	}
+
+	// Prometheusメトリクス
+	if h.metricsHandler != nil {
+		h.metricsHandler.RecordMCPRequest(method, status, duration)
 	}
 }
 
