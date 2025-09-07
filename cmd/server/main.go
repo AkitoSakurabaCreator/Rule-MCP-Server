@@ -167,6 +167,10 @@ func main() {
 	healthHandler := handler.NewHealthHandler()
 	r.GET("/api/v1/health", healthHandler.HealthCheck)
 
+	// メトリクスハンドラーを初期化
+	metricsHandler := handler.NewMetricsHandler(userRepo, projectRepo, ruleRepo, metricsRepo)
+	r.GET("/metrics", metricsHandler.Metrics)
+
 	authHandler := handler.NewAuthHandler(jwtSecret, userRepo, roleRepo)
 	auth := r.Group("/api/v1/auth")
 	{
@@ -453,6 +457,9 @@ func main() {
 		admin.POST("/roles", adminHandler.CreateRole)
 		admin.PUT("/roles/:name", adminHandler.UpdateRole)
 		admin.DELETE("/roles/:name", adminHandler.DeleteRole)
+		// 一括エクスポート・インポート
+		admin.POST("/bulk-export", adminHandler.BulkExport)
+		admin.POST("/bulk-import", adminHandler.BulkImport)
 	}
 
 	if projectRepo != nil {
@@ -493,6 +500,8 @@ func main() {
 		mcpHandler := handler.NewMCPHandler(ruleUseCase, globalRuleUseCase, projectDetector)
 		// セッター経由でメトリクスリポジトリを注入
 		mcpHandler.SetMetricsRepo(metricsRepo)
+		// メトリクスハンドラーを注入
+		mcpHandler.SetMetricsHandler(metricsHandler)
 		mcp := r.Group("/mcp")
 		{
 			mcp.POST("/request", mcpHandler.HandleMCPRequest)

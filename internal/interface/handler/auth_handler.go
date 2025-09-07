@@ -136,7 +136,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// ユーザーがアクティブかチェック
 	if !user.IsActive {
-		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Account is inactive", nil)
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "アカウントは管理者の承認待ちです。承認後にログインできます。", nil)
 		return
 	}
 
@@ -218,13 +218,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// ユーザーを作成
+	// ユーザーを作成（承認待ち状態）
 	user := &domain.User{
 		Username:     req.Username,
 		Email:        req.Email,
 		FullName:     req.FullName,
 		Role:         "user",
-		IsActive:     true,
+		IsActive:     false, // 管理者承認が必要
 		PasswordHash: string(hashedPassword),
 	}
 
@@ -234,33 +234,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// JWTトークンを生成
-	claims := Claims{
-		UserID:   user.ID,
-		Username: user.Username,
-		Role:     user.Role,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(h.jwtSecret)
-	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "トークン生成に失敗しました", nil)
-		return
-	}
-
-	c.JSON(http.StatusOK, LoginResponse{
-		Token: tokenString,
-		User: User{
-			ID:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-			Role:     user.Role,
-		},
-		Message: "Registration successful",
+	// 承認待ち状態のため、トークンは生成せずにメッセージのみ返す
+	c.JSON(http.StatusOK, gin.H{
+		"message": "アカウントが作成されました。管理者の承認をお待ちください。",
+		"status":  "pending_approval",
 	})
 }
 
@@ -333,14 +310,14 @@ func (h *AuthHandler) ApproveUser(c *gin.Context) {
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "管理者権限が必要です", nil)
 		return
 	}
 
 	// ユーザーを取得
 	user, err := h.userRepo.GetByID(req.UserID)
 	if err != nil {
-		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "User not found", nil)
+		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "ユーザーが見つかりません", nil)
 		return
 	}
 
@@ -348,16 +325,16 @@ func (h *AuthHandler) ApproveUser(c *gin.Context) {
 	user.IsActive = req.Approve
 	err = h.userRepo.Update(user)
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "User approval failed", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "ユーザー承認処理に失敗しました", nil)
 		return
 	}
 
-	action := "approved"
+	action := "承認"
 	if !req.Approve {
-		action = "rejected"
+		action = "拒否"
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User " + action + " successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "ユーザーを" + action + "しました"})
 }
 
 // GetPendingUsers 承認待ちユーザー一覧取得
@@ -365,14 +342,14 @@ func (h *AuthHandler) GetPendingUsers(c *gin.Context) {
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "管理者権限が必要です", nil)
 		return
 	}
 
 	// 非アクティブユーザーを取得
 	users, err := h.userRepo.GetAll()
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "Failed to get users", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "ユーザー一覧の取得に失敗しました", nil)
 		return
 	}
 

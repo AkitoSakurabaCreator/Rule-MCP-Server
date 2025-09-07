@@ -17,6 +17,17 @@ const LanguageSwitcher: React.FC = () => {
 
   const handleLanguageChange = (language: string) => {
     i18n.changeLanguage(language);
+    
+    // 言語変更をlocalStorageに保存
+    localStorage.setItem('i18nextLng', language);
+    
+    // HTMLタグの言語属性を更新
+    document.documentElement.setAttribute('lang', language);
+    
+    // RTL言語の場合はdir属性も更新
+    const isRTL = ['ar', 'he', 'fa'].includes(language);
+    document.documentElement.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
+    
     handleClose();
   };
 

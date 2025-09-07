@@ -11,6 +11,8 @@ import {
   Stepper,
   Step,
   StepLabel,
+  CircularProgress,
+  Chip,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +31,9 @@ const RegisterForm: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [pendingApproval, setPendingApproval] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -48,6 +53,10 @@ const RegisterForm: React.FC = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear field error when user starts typing
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
   const validateStep = (step: number): boolean => {
@@ -65,6 +74,52 @@ const RegisterForm: React.FC = () => {
     }
   };
 
+  const parseErrorResponse = (error: any): { message: string; field?: string; code?: string } => {
+    if (error?.response?.data) {
+      const data = error.response.data;
+      return {
+        message: data.message || t('auth.registerError'),
+        field: data.field,
+        code: data.code
+      };
+    }
+    return {
+      message: error instanceof Error ? error.message : t('auth.registerError')
+    };
+  };
+
+  const getErrorMessage = (errorInfo: { message: string; field?: string; code?: string }): string => {
+    const { message, code } = errorInfo;
+    
+    // Handle specific error codes
+    switch (code) {
+      case 'validation_error':
+        if (message.includes('Username already exists') || message.includes('ユーザー名は既に存在します')) {
+          return t('auth.usernameExists');
+        }
+        if (message.includes('Email already exists') || message.includes('メールアドレスは既に存在します')) {
+          return t('auth.emailExists');
+        }
+        if (message.includes('Invalid email') || message.includes('無効なメールアドレス')) {
+          return t('auth.invalidEmail');
+        }
+        if (message.includes('Weak password') || message.includes('弱いパスワード')) {
+          return t('auth.weakPassword');
+        }
+        break;
+      case 'username_exists':
+        return t('auth.usernameExists');
+      case 'email_exists':
+        return t('auth.emailExists');
+      case 'invalid_email':
+        return t('auth.invalidEmail');
+      case 'weak_password':
+        return t('auth.weakPassword');
+    }
+    
+    return message;
+  };
+
   const handleSubmit = async () => {
     if (formData.password !== formData.confirmPassword) {
       setError(t('auth.passwordsDoNotMatch'));
@@ -73,6 +128,9 @@ const RegisterForm: React.FC = () => {
 
     setLoading(true);
     setError(null);
+    setSuccess(null);
+    setPendingApproval(false);
+    setFieldErrors({});
 
     try {
       await register({
@@ -83,7 +141,26 @@ const RegisterForm: React.FC = () => {
       });
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('auth.registerError'));
+      const errorInfo = parseErrorResponse(err);
+      const errorMessage = getErrorMessage(errorInfo);
+      
+      // 承認待ちメッセージの場合は成功として表示
+      if (errorMessage.includes('管理者の承認をお待ちください') || 
+          errorMessage.includes('administrator approval')) {
+        setSuccess(t('auth.accountCreated'));
+        setPendingApproval(true);
+        // 3秒後にログインページに遷移
+        setTimeout(() => {
+          navigate('/auth/login');
+        }, 3000);
+      } else {
+        // フィールド固有のエラーの場合
+        if (errorInfo.field) {
+          setFieldErrors(prev => ({ ...prev, [errorInfo.field!]: errorMessage }));
+        } else {
+          setError(errorMessage);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -104,7 +181,8 @@ const RegisterForm: React.FC = () => {
               variant="outlined"
               autoComplete="username"
               autoFocus
-              helperText={t('auth.usernameHelp')}
+              error={!!fieldErrors.username}
+              helperText={fieldErrors.username || t('auth.usernameHelp')}
             />
             <TextField
               fullWidth
@@ -116,7 +194,8 @@ const RegisterForm: React.FC = () => {
               margin="normal"
               variant="outlined"
               autoComplete="email"
-              helperText={t('auth.emailHelp')}
+              error={!!fieldErrors.email}
+              helperText={fieldErrors.email || t('auth.emailHelp')}
             />
             <TextField
               fullWidth
@@ -128,7 +207,8 @@ const RegisterForm: React.FC = () => {
               margin="normal"
               variant="outlined"
               autoComplete="new-password"
-              helperText={t('auth.passwordHelp')}
+              error={!!fieldErrors.password}
+              helperText={fieldErrors.password || t('auth.passwordHelp')}
             />
           </Box>
         );
@@ -144,7 +224,8 @@ const RegisterForm: React.FC = () => {
               margin="normal"
               variant="outlined"
               autoComplete="name"
-              helperText={t('auth.fullNameHelp')}
+              error={!!fieldErrors.full_name}
+              helperText={fieldErrors.full_name || t('auth.fullNameHelp')}
             />
           </Box>
         );
@@ -161,7 +242,8 @@ const RegisterForm: React.FC = () => {
               margin="normal"
               variant="outlined"
               autoComplete="new-password"
-              helperText={t('auth.confirmPasswordHelp')}
+              error={!!fieldErrors.confirmPassword}
+              helperText={fieldErrors.confirmPassword || t('auth.confirmPasswordHelp')}
             />
             <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -234,11 +316,36 @@ const RegisterForm: React.FC = () => {
             </Alert>
           )}
 
-          {getStepContent(activeStep)}
+          {success && (
+            <Alert 
+              severity="success" 
+              sx={{ mb: 3 }}
+              icon={pendingApproval ? <CircularProgress size={20} /> : undefined}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                {success}
+                {pendingApproval && (
+                  <Chip 
+                    label={t('auth.pendingApproval')} 
+                    size="small" 
+                    color="warning" 
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                {t('auth.redirectingToLogin')}
+              </Typography>
+            </Alert>
+          )}
+
+          <Box sx={{ opacity: pendingApproval ? 0.6 : 1, pointerEvents: pendingApproval ? 'none' : 'auto' }}>
+            {getStepContent(activeStep)}
+          </Box>
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
             <Button
-              disabled={activeStep === 0}
+              disabled={activeStep === 0 || pendingApproval}
               onClick={handleBack}
               sx={{ mr: 1 }}
             >
@@ -248,7 +355,7 @@ const RegisterForm: React.FC = () => {
               <Button
                 variant="contained"
                 onClick={handleNext}
-                disabled={!validateStep(activeStep) || loading}
+                disabled={!validateStep(activeStep) || loading || pendingApproval}
                 sx={{
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   '&:hover': {

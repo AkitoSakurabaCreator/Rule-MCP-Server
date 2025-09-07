@@ -123,15 +123,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterData) => {
     try {
       const response = await api.post('/auth/register', userData);
+      const { message, status } = response.data;
+      
+      // 承認待ち状態の場合は、トークンは保存せずにメッセージを返す
+      if (status === 'pending_approval') {
+        throw new Error(message);
+      }
+      
+      // 通常の登録完了の場合（現在は使用されない）
       const { token, user: newUser } = response.data;
-      
-      // トークンを保存
       localStorage.setItem('auth_token', token);
-      
-      // ユーザー情報を設定
       setUser(newUser);
-      
-      // APIクライアントにトークンを設定
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } catch (error: any) {
       const errorData = error.response?.data;
