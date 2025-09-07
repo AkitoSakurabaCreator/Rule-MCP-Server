@@ -47,6 +47,7 @@ Thumbs.db
 .env.*.local
 .env.prod
 .env.development
+.env.production
 .env.test
 
 # Log files
@@ -205,5 +206,3 @@ frontend/src/stories/
 
 
 cmd/mcp-server/node_modules
-.env.production
-.env.production
