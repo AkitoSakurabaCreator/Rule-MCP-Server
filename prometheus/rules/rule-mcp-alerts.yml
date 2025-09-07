@@ -1,0 +1,56 @@
+groups:
+  - name: rule-mcp-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(rule_mcp_requests_total{status="error"}[5m]) / rate(rule_mcp_requests_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rule MCP Server エラー率が高い"
+          description: "過去5分間のエラー率が10%を超えています。現在のエラー率: {{ $value | humanizePercentage }}"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(rule_mcp_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rule MCP Server レスポンス時間が遅い"
+          description: "95パーセンタイルのレスポンス時間が1秒を超えています。現在: {{ $value }}秒"
+
+      - alert: HighSystemLoad
+        expr: rule_mcp_system_load_percent > 80
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "システム負荷が高い"
+          description: "システム負荷が80%を超えています。現在: {{ $value }}%"
+
+      - alert: DatabaseConnectionDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "データベース接続が失われました"
+          description: "PostgreSQLデータベースへの接続が失われています"
+
+      - alert: NginxHighErrorRate
+        expr: rate(nginx_http_requests_total{status=~"5.."}[5m]) / rate(nginx_http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nginx 5xxエラー率が高い"
+          description: "過去5分間の5xxエラー率が5%を超えています。現在: {{ $value | humanizePercentage }}"
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ディスク容量が不足しています"
+          description: "ディスク使用率が90%を超えています。残り容量: {{ $value | humanizePercentage }}"
