@@ -109,9 +109,9 @@ const RuleList: React.FC = () => {
   const handleExport = async () => {
     try {
       const response = await api.post('/rules/export', {
-        project_id: projectId,
+        projectId: projectId,
         format: exportFormat,
-        rule_ids: selectedRules.length > 0 ? selectedRules : undefined,
+        ruleIDs: selectedRules.length > 0 ? selectedRules : undefined,
       });
       
       // ファイルダウンロード
@@ -140,8 +140,8 @@ const RuleList: React.FC = () => {
       const data = JSON.parse(text);
       
       await api.post('/rules/import', {
-        project_id: projectId,
-        data,
+        projectId: projectId,
+        rules: data.rules || data,
         overwrite: importOverwrite,
       });
       
