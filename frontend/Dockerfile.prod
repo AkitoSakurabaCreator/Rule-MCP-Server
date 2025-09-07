@@ -10,11 +10,15 @@ WORKDIR /app
 # package.json と package-lock.json をコピー
 COPY package*.json ./
 
-# 依存関係をインストール
-RUN npm ci --only=production
+# 依存関係をインストール（ビルドに必要なdevDependenciesも含める）
+RUN npm ci
 
 # ソースコードをコピー
 COPY . .
+
+# 環境変数を設定（ビルド時に使用）
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 # 本番用ビルド
 RUN npm run build
