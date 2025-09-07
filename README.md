@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-AIエージェント（Cursor、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
+AIエージェント（Cursor、Claude Code、Cline）が共通のルールを取得・適用できるMCP（Model Context Protocol）サーバーです。
 
 ## 機能
 
@@ -17,6 +17,151 @@ AIエージェント（Cursor、Cline）が共通のルールを取得・適用�
 - **多言語対応（i18n）**: 英語、日本語、中国語、ヒンディー語、スペイン語、アラビア語
 - **ダークテーマ対応**: ライト/ダークモード切り替え
 - **クリーンアーキテクチャ**による保守性の高い設計
+
+## 🚀 クイックスタート
+
+### パターン1: 既にサーバーが動いている場合
+
+Rule MCP Serverが既に稼働している場合は、以下の手順でAIエージェントを設定するだけです。
+
+#### 1. MCPサーバーのインストール
+
+```bash
+# pnpm dlx経由（推奨・インストール不要）
+pnpm dlx rule-mcp-server
+
+# またはグローバルインストール
+pnpm add -g rule-mcp-server
+```
+
+#### 2. AIエージェント設定
+
+##### Cursor
+```bash
+# 設定テンプレートをコピー
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
+```
+
+##### Claude Code
+```bash
+# Claude Code にMCPサーバーを追加（stdio）
+claude mcp add rule-mcp-server --env RULE_SERVER_URL=http://localhost:18080 -- pnpm dlx rule-mcp-server
+
+# APIキーを使う場合
+claude mcp add rule-mcp-server \
+  --env RULE_SERVER_URL=http://localhost:18080 \
+  --env MCP_API_KEY=your_api_key \
+  -- pnpm dlx rule-mcp-server
+
+# 参考: Anthropic公式ドキュメント
+# https://docs.anthropic.com/ja/docs/claude-code/mcp
+```
+
+#### 3. 利用開始！
+
+AIエージェント（Cursor/Claude Code）を再起動して、コーディングルールを自動取得・適用できるようになります。
+
+**📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
+
+---
+
+### パターン2: サーバーを自分で立ち上げる場合
+
+Rule MCP Serverを自分で立ち上げて運用したい場合は、以下の手順に従ってください。**本番環境での運用を推奨します。**
+
+#### 1. 環境設定
+
+```bash
+# 本番環境用の環境変数ファイルを作成
+cp env.production.example .env.production
+
+# .env.productionファイルを編集（必要に応じて）
+nano .env.production
+```
+
+**本番環境での必須設定:**
+- `JWT_SECRET`: 強力なランダム文字列（生成方法は後述）
+- `ALLOWED_ORIGINS`: 許可するオリジンをカンマ区切りで指定
+- `ENV=production`: 本番環境モードに設定
+
+**秘密鍵の生成方法:**
+```bash
+# OpenSSLを使用
+openssl rand -hex 32
+
+# Pythonを使用
+python3 -c "import secrets; print(secrets.token_hex(32))"
+
+# Node.jsを使用
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+#### 2. サーバー起動
+
+##### 本番環境での起動（推奨）
+```bash
+# 本番環境用Docker Composeで起動
+docker compose -f docker-compose.prod.yml up -d
+
+# 稼働確認
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} が返れば稼働中
+```
+
+**本番環境のアクセス:**
+- Web UI: http://localhost:13000
+- API: http://localhost:18080/api/v1
+- データベース: localhost:15432
+
+##### 開発環境での起動（開発者向け）
+```bash
+# 開発環境用の環境変数ファイルを作成
+cp env.development.example .env.development
+
+# 開発環境用Docker Composeで起動
+docker compose -f docker-compose.dev.yml up -d
+
+# 稼働確認
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} が返れば稼働中
+```
+
+**開発環境のアクセス:**
+- Web UI: http://localhost:13000
+- API: http://localhost:18080/api/v1
+- データベース: localhost:15432
+
+##### チーム運用での起動
+```bash
+# 本番環境で起動（チーム共有用）
+docker compose -f docker-compose.prod.yml up -d
+
+# 稼働確認
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} が返れば稼働中
+```
+
+**チーム運用のアクセス:**
+- Web UI: http://[サーバーIP]:13000
+- API: http://[サーバーIP]:18080/api/v1
+- データベース: [サーバーIP]:15432
+
+#### LAN 内公開の例（チーム運用）
+- サーバーをLAN上のホストで起動し、クライアント側の環境変数をLAN IPに設定:
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "env": {
+        "RULE_SERVER_URL": "http://192.168.1.20:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      }
+    }
+  }
+}
+```
+
+参考: Makefile を使う場合は `make docker-up` / `make docker-down`
 
 ## 技術スタック
 
@@ -55,11 +200,14 @@ AIエージェント（Cursor、Cline）が共通のルールを取得・適用�
 
 **重要**: 初回ログイン後は必ずパスワードを変更してください。
 
-### インストール
+### 開発者向けセットアップ
 
 ```bash
 git clone <repository-url>
-cd RuleMCPServer
+cd Rule-MCP-Server
+
+# 環境変数ファイルをコピー
+cp env.template .env.production
 
 # バックエンド依存関係
 go mod tidy
@@ -70,54 +218,38 @@ npm install
 cd ..
 ```
 
-### 起動
+### 起動方法
+
+#### 本番環境（推奨）
+
+```bash
+# 本番環境用Docker Composeで起動
+docker compose -f docker-compose.prod.yml up -d
+
+# 停止
+docker compose -f docker-compose.prod.yml down
+```
 
 #### 開発環境
 
 ```bash
-# バックエンド（安全ポート18081）
-PORT=18081 go run ./cmd/server
+# 開発環境用Docker Composeで起動
+docker compose -f docker-compose.dev.yml up -d
 
-# フロントエンド
-cd frontend
-npm start
-
-# Makefileを使用
-make run        # 開発環境（ポート18081）
-make run-frontend
+# 停止
+docker compose -f docker-compose.dev.yml down
 ```
 
-#### 本番環境（Docker）
+#### ローカル開発（Docker不使用）
 
 ```bash
-# 本番環境用の環境変数ファイルを作成
-cp env.prod.example .env.prod
-# .env.prodファイルの値を本番環境に合わせて編集
+# バックエンド（ポート18080）
+go run ./cmd/server
 
-# 本番環境をデプロイ
-make -f Makefile.prod deploy
-
-# 本番環境のステータス確認
-make -f Makefile.prod status
-
-# 本番環境のログ確認
-make -f Makefile.prod logs
-
-# 本番環境を停止
-make -f Makefile.prod down
-
-# 本番環境をクリーンアップ
-make -f Makefile.prod clean
+# フロントエンド（別ターミナル）
+cd frontend
+npm start
 ```
-
-#### 本番環境の特徴
-
-- **セキュリティ強化**: 非rootユーザーでの実行、環境変数による設定
-- **パフォーマンス最適化**: マルチステージビルド、軽量なAlpine Linux
-- **ヘルスチェック**: 各サービスの健全性監視
-- **ログ管理**: 構造化されたログ出力とローテーション
-- **バックアップ**: データベースの自動バックアップ機能
-- **スケーラビリティ**: Docker SwarmやKubernetes対応の準備
 
 ## アーキテクチャ
 
@@ -371,7 +503,7 @@ cp config/standard-mcp-config.template.json ~/.cursor/mcp_settings.json
 #### **3. 設定ファイルの配置**
 - **Cursor**: `~/.cursor/mcp_settings.json`
 - **Cline**: `~/.cline/mcp_settings.json`
-- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Claude Code**: CLIで追加（`claude mcp add ...` を使用）
 
 #### **4. 利用可能なツール**
 標準MCPサーバーは以下のツールを提供：
@@ -1030,28 +1162,54 @@ curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
 ```
 
 ### **MCPクライアント設定**
+
+#### Cursor
 ```json
 // ~/.cursor/mcp.json
 {
   "mcpServers": {
     "rule-mcp-server": {
-      "command": "curl",
+      "command": "pnpm",
       "args": [
-        "-X", "POST",
-        "-H", "Content-Type: application/json",
-        "-H", "X-API-Key: ${MCP_API_KEY}",
-        "-d", "{\"id\":\"${requestId}\",\"method\":\"${method}\",\"params\":${params}}",
-        "${MCP_SERVER_URL}/mcp/request"
+        "dlx",
+        "rule-mcp-server"
       ],
       "env": {
-        "MCP_SERVER_URL": "http://localhost:18081",
-        "MCP_API_KEY": "your_api_key_here",
-        "AUTO_INJECT": "true"
-      }
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
     }
   }
 }
 ```
+
+#### Claude Desktop
+```json
+// ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "rule-mcp-server"
+      ],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+補足: `MCP_API_KEY` は未設定でも動作します（Publicアクセス）。チーム運用や管理APIを使う場合にのみ設定してください。
 
 ## 🚀 クイックスタート
 
@@ -1064,7 +1222,7 @@ pnpm add -g rule-mcp-server
 # 2. 設定ファイルを作成
 cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 
-# 3. AIエージェント（Cursor/Cline）で利用開始！
+# 3. AIエージェント（Cursor/Claude Desktop/Cline）で利用開始！
 ```
 
 **📦 npmパッケージ**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server) として公開済み
@@ -1252,23 +1410,6 @@ refactor: improve error handling in MCP handlers
 - **型安全性**: TypeScriptの型定義を適切に使用
 - **エラーハンドリング**: 適切なエラーメッセージとログ出力
 
-## 📈 ロードマップ
-
-### v1.1.0 (予定)
-- [ ] **Kubernetes対応**: Helm Chart提供
-- [ ] **メトリクス**: Prometheus/Grafana統合
-- [ ] **プラグインシステム**: カスタムルール拡張
-
-### v1.2.0 (予定)
-- [ ] **AI統合**: GPT-4によるルール自動生成
-- [ ] **IDE拡張**: VS Code Extension
-- [ ] **クラウド対応**: AWS/GCP/Azure対応
-
-### v2.0.0 (予定)
-- [ ] **分散アーキテクチャ**: マイクロサービス化
-- [ ] **リアルタイム協働**: WebSocket活用
-- [ ] **機械学習**: ルール推奨システム
-
 ## 🏆 コミュニティ
 
 ### 貢献者
@@ -1299,14 +1440,40 @@ MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してくださ�
 ### ドキュメント
 
 - **📚 詳細ドキュメント**: [GitHub Wiki](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/wiki)
-- **🎥 チュートリアル**: [YouTube Playlist](https://youtube.com/playlist?list=...)
-- **📖 API リファレンス**: [API Docs](https://api-docs.rulemcp.com)
 
 ### コミュニティ
 
-- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/...)
-- **🐦 Twitter**: [@RuleMCPServer](https://twitter.com/RuleMCPServer)
-- **📧 メーリングリスト**: [Google Groups](https://groups.google.com/g/rule-mcp-server)
+- **💬 Discord**: [Rule MCP Server Community](https://discord.gg/dCAUC8m6dw)
+- **🐦 X (旧Twitter)**: [@_sakuraba_akito](https://x.com/_sakuraba_akito)
+
+
+## 📋 貢献ガイドライン
+
+### 貢献の流れ
+
+1. **Issue作成**: バグ報告や機能提案
+2. **フォーク**: リポジトリをフォーク
+3. **ブランチ作成**: `feature/your-feature` または `fix/your-fix`
+4. **開発**: コード変更とテスト追加
+5. **プルリクエスト**: 詳細な説明と共に提出
+
+詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+
+## 📜 ライセンス
+
+MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
+
+## 🔒 セキュリティ
+
+セキュリティに関する問題を発見した場合は、[SECURITY.md](SECURITY.md) の手順に従って報告してください。
+
+## 📝 行動規範
+
+このプロジェクトは [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) に従って運営されています。
+
+## 📈 変更履歴
+
+最新の変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
 
 ---
 

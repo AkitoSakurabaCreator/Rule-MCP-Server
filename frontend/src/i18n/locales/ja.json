@@ -17,7 +17,8 @@
     "success": "成功",
     "warning": "警告",
     "info": "情報",
-    "actions": "操作"
+    "actions": "操作",
+    "permissionDenied": "権限がありません"
   },
   "theme": {
     "switchToLight": "ライトモードに切り替え",
@@ -219,6 +220,8 @@
     "analytics": "システム分析",
     "mcpMonitoring": "MCP監視",
     "systemLogs": "システムログ",
+    "roles": "ロール管理",
+    "languages": "言語管理",
     "userManagement": "ユーザー管理",
     "addUser": "ユーザー追加",
     "username": "ユーザー名",
@@ -257,6 +260,50 @@
     "successRate": "成功率",
     "errorRate": "エラー率",
     "recentLogs": "最近のログ",
-    "logLevels": "ログレベル"
+    "logLevels": "ログレベル",
+    "loadError": "管理データの読み込みに失敗しました",
+    "addRole": "ロール追加",
+    "editRole": "ロール編集",
+    "description": "説明",
+    "permissions": "権限",
+    "usernameEmailRequired": "ユーザー名とメールは必須です",
+    "userCreateSuccess": "ユーザーを作成しました",
+    "userCreateFailed": "ユーザー作成に失敗しました",
+    "userUpdateSuccess": "ユーザーを更新しました",
+    "userUpdateFailed": "ユーザー更新に失敗しました",
+    "nameRequired": "名前は必須です",
+    "apiKeyGenerateSuccess": "APIキーを生成しました",
+    "apiKeyGenerateFailed": "APIキー生成に失敗しました",
+    "apiKeyUpdateSuccess": "APIキーを更新しました",
+    "apiKeyUpdateFailed": "APIキー更新に失敗しました",
+    "apiKeyDeleteSuccess": "APIキーを削除しました",
+    "apiKeyDeleteFailed": "APIキー削除に失敗しました",
+    "deleteApiKeyConfirm": "このAPIキーを削除しますか？",
+    "deleteUserConfirm": "このユーザーを削除しますか？",
+    "deleteRoleConfirm": "このロールを削除しますか？",
+    "rolePresets": "ロールプリセット",
+    "presetReadOnly": "ReadOnly",
+    "presetEditor": "Editor",
+    "presetAdmin": "Admin",
+    "addLanguage": "言語追加",
+    "editLanguage": "言語編集",
+    "code": "コード",
+    "icon": "アイコン",
+    "color": "カラー",
+    "active": "有効"
+  },
+  "permissions": {
+    "manage_users": {
+      "name": "ユーザー管理",
+      "desc": "ユーザーおよびAPIキーの作成・更新・削除が可能"
+    },
+    "manage_rules": {
+      "name": "ルール管理",
+      "desc": "プロジェクト/グローバルルールの作成・更新・削除が可能"
+    },
+    "manage_roles": {
+      "name": "ロール管理",
+      "desc": "ロールおよび権限の作成・更新・削除が可能"
+    }
   }
 }

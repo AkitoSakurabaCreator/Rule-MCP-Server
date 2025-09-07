@@ -1,9 +1,8 @@
 package usecase
 
 import (
-	"errors"
-
-	"github.com/opm008077/RuleMCPServer/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/apperr"
 )
 
 type GlobalRuleUseCase struct {
@@ -18,7 +17,7 @@ func NewGlobalRuleUseCase(globalRuleRepo domain.GlobalRuleRepository) *GlobalRul
 
 func (uc *GlobalRuleUseCase) CreateGlobalRule(language, ruleID, name, description, ruleType, severity, pattern, message string) error {
 	if language == "" || ruleID == "" || name == "" {
-		return errors.New("language, rule_id, and name are required")
+		return apperr.WrapWithDetails(apperr.ErrValidation, "入力値が不正です", map[string]interface{}{"missing": []string{"language", "rule_id", "name"}})
 	}
 
 	rule := &domain.GlobalRule{

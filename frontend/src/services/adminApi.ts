@@ -43,6 +43,30 @@ export interface SystemLog {
   message: string;
 }
 
+export interface RuleOption {
+  id: number;
+  kind: 'type' | 'severity';
+  value: string;
+  is_active: boolean;
+}
+
+export interface Role {
+  id?: number;
+  name: string;
+  description?: string;
+  permissions?: Record<string, boolean>;
+  is_active?: boolean;
+}
+
+export interface Language {
+  code: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  isActive?: boolean;
+}
+
 // 管理者用APIサービス
 export const adminApi = {
   // 統計データ取得
@@ -66,6 +90,12 @@ export const adminApi = {
   // MCP統計取得
   getMCPStats: async (): Promise<MCPStats[]> => {
     const response = await api.get('/admin/mcp-stats');
+    return response.data;
+  },
+
+  // MCPパフォーマンス取得
+  getMCPPerformance: async (): Promise<{ avgMs: number; successRate: number; errorRate: number; p95Ms: number }> => {
+    const response = await api.get('/admin/mcp-performance');
     return response.data;
   },
 
@@ -101,5 +131,75 @@ export const adminApi = {
   // APIキー削除
   deleteApiKey: async (id: number): Promise<void> => {
     await api.delete(`/admin/api-keys/${id}`);
+  },
+
+  // APIキー更新
+  updateApiKey: async (id: number, payload: { name?: string; description?: string; isActive?: boolean }): Promise<void> => {
+    await api.put(`/admin/api-keys/${id}`, payload);
+  },
+
+  // 設定取得/更新
+  getSettings: async (): Promise<Record<string, any>> => {
+    const response = await api.get('/admin/settings');
+    return response.data;
+  },
+  updateSettings: async (settings: Record<string, any>): Promise<void> => {
+    await api.put('/admin/settings', settings);
+  },
+
+  // ルールオプション取得
+  getRuleOptions: async (kind: 'type' | 'severity'): Promise<RuleOption[]> => {
+    const response = await api.get(`/admin/rule-options`, { params: { kind } });
+    return response.data.options as RuleOption[];
+  },
+
+  // ルールオプション追加（admin権限が必要）
+  addRuleOption: async (kind: 'type' | 'severity', value: string): Promise<void> => {
+    await api.post(`/admin/rule-options`, { kind, value });
+  },
+
+  // ルールオプション削除（admin権限が必要）
+  deleteRuleOption: async (kind: 'type' | 'severity', value: string): Promise<void> => {
+    await api.delete(`/admin/rule-options`, { data: { kind, value } });
+  },
+
+  // ロール管理
+  getRoles: async (): Promise<Role[]> => {
+    const response = await api.get('/admin/roles');
+    return response.data as Role[];
+  },
+  createRole: async (role: Role): Promise<void> => {
+    await api.post('/admin/roles', role);
+  },
+  updateRole: async (name: string, role: Partial<Role>): Promise<void> => {
+    await api.put(`/admin/roles/${encodeURIComponent(name)}`, role);
+  },
+  deleteRole: async (name: string): Promise<void> => {
+    await api.delete(`/admin/roles/${encodeURIComponent(name)}`);
+  },
+  
+  // 言語管理
+  getLanguages: async (): Promise<Language[]> => {
+    const res = await api.get('/languages');
+    return res.data as Language[];
+  },
+  createLanguage: async (payload: Language): Promise<void> => {
+    await api.post('/languages', payload);
+  },
+  updateLanguage: async (code: string, payload: Partial<Language>): Promise<void> => {
+    await api.put(`/languages/${encodeURIComponent(code)}`, payload);
+  },
+  deleteLanguage: async (code: string): Promise<void> => {
+    await api.delete(`/languages/${encodeURIComponent(code)}`);
+  },
+
+  // 一括エクスポート・インポート
+  bulkExportRules: async (params: { format: string; scope: string }): Promise<any> => {
+    const response = await api.post('/admin/bulk-export', params);
+    return response.data;
+  },
+  bulkImportRules: async (params: { data: any; overwrite: boolean }): Promise<any> => {
+    const response = await api.post('/admin/bulk-import', params);
+    return response.data;
   },
 };

@@ -3,17 +3,20 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/mcpx"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/opm008077/RuleMCPServer/internal/domain"
-	"github.com/opm008077/RuleMCPServer/internal/usecase"
 )
 
 type MCPHandler struct {
 	ruleUseCase       *usecase.RuleUseCase
 	globalRuleUseCase *usecase.GlobalRuleUseCase
 	projectDetector   *usecase.ProjectDetector
+	metricsRepo       domain.MetricsRepository
 }
 
 func NewMCPHandler(ruleUseCase *usecase.RuleUseCase, globalRuleUseCase *usecase.GlobalRuleUseCase, projectDetector *usecase.ProjectDetector) *MCPHandler {
@@ -24,33 +27,49 @@ func NewMCPHandler(ruleUseCase *usecase.RuleUseCase, globalRuleUseCase *usecase.
 	}
 }
 
-// HandleMCPRequest handles MCP protocol requests
+// SetMetricsRepo メトリクスリポジトリを注入
+func (h *MCPHandler) SetMetricsRepo(repo domain.MetricsRepository) {
+	h.metricsRepo = repo
+}
+
+func (h *MCPHandler) withMetrics(method string, handler func() error) {
+	start := time.Now()
+	status := "ok"
+	if err := handler(); err != nil {
+		status = "error"
+	}
+	if h.metricsRepo != nil {
+		_ = h.metricsRepo.RecordMCP(method, status, int(time.Since(start)/time.Millisecond))
+	}
+}
+
+// HandleMCPRequest MCPプロトコルリクエストを処理
 func (h *MCPHandler) HandleMCPRequest(c *gin.Context) {
 	var req domain.MCPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid request format")
+		h.sendMCPError(c, "", mcpx.CodeValidation, "Invalid request format")
 		return
 	}
 
 	switch req.Method {
 	case "tools/list":
-		h.handleToolsList(c, req)
+		h.withMetrics("tools/list", func() error { h.handleToolsList(c, req); return nil })
 	case "getRules":
-		h.handleGetRules(c, req)
+		h.withMetrics("getRules", func() error { h.handleGetRules(c, req); return nil })
 	case "validateCode":
-		h.handleValidateCode(c, req)
+		h.withMetrics("validateCode", func() error { h.handleValidateCode(c, req); return nil })
 	case "getProjectInfo":
-		h.handleGetProjectInfo(c, req)
+		h.withMetrics("getProjectInfo", func() error { h.handleGetProjectInfo(c, req); return nil })
 	case "autoDetectProject":
-		h.handleAutoDetectProject(c, req)
+		h.withMetrics("autoDetectProject", func() error { h.handleAutoDetectProject(c, req); return nil })
 	case "scanLocalProjects":
-		h.handleScanLocalProjects(c, req)
+		h.withMetrics("scanLocalProjects", func() error { h.handleScanLocalProjects(c, req); return nil })
 	default:
-		h.sendMCPError(c, req.ID, 404, "Method not found: "+req.Method)
+		h.sendMCPError(c, req.ID, mcpx.CodeNotFound, "Method not found: "+req.Method)
 	}
 }
 
-// handleToolsList handles the tools/list MCP method
+// handleToolsList tools/list MCPメソッドを処理
 func (h *MCPHandler) handleToolsList(c *gin.Context, req domain.MCPRequest) {
 	tools := []map[string]interface{}{
 		{
@@ -139,35 +158,33 @@ func (h *MCPHandler) handleToolsList(c *gin.Context, req domain.MCPRequest) {
 	h.sendMCPResponse(c, req.ID, map[string]interface{}{"tools": tools})
 }
 
-// handleGetRules handles the getRules MCP method
+// handleGetRules getRules MCPメソッドを処理
 func (h *MCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest) {
 	var params domain.MCPRuleRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
 	if params.ProjectID == "" {
-		h.sendMCPError(c, req.ID, 400, "Project ID is required")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Project ID is required")
 		return
 	}
 
-	// Get project rules
+	// プロジェクトルールを取得
 	projectRules, err := h.ruleUseCase.GetProjectRules(params.ProjectID)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to get project rules: "+err.Error())
+		code, msg := mcpx.MapAppErrorToMCP(err)
+		h.sendMCPError(c, req.ID, code, "Failed to get project rules: "+msg)
 		return
 	}
 
-	// Get global rules if language is specified
+	// 言語が指定されている場合はグローバルルールを取得
 	var globalRules []domain.GlobalRule
 	if params.Language != "" {
 		globalRulesPtr, err := h.globalRuleUseCase.GetGlobalRules(params.Language)
-		if err != nil {
-			// Log error but continue without global rules
-			c.Error(err)
-		} else {
-			// Convert pointer slice to value slice
+		if err == nil {
+			// ポインタスライスを値スライスに変換
 			globalRules = make([]domain.GlobalRule, len(globalRulesPtr))
 			for i, gr := range globalRulesPtr {
 				globalRules[i] = *gr
@@ -175,11 +192,11 @@ func (h *MCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest) {
 		}
 	}
 
-	// Combine project rules and global rules
+	// プロジェクトルールとグローバルルールを結合
 	appliedRules := make([]domain.Rule, 0, len(projectRules.Rules)+len(globalRules))
 	appliedRules = append(appliedRules, projectRules.Rules...)
 
-	// Convert global rules to project rules format
+	// グローバルルールをプロジェクトルール形式に変換
 	for _, gr := range globalRules {
 		rule := domain.Rule{
 			RuleID:      gr.RuleID,
@@ -205,30 +222,31 @@ func (h *MCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest) {
 	h.sendMCPResponse(c, req.ID, response)
 }
 
-// handleValidateCode handles the validateCode MCP method
+// handleValidateCode validateCode MCPメソッドを処理
 func (h *MCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequest) {
 	var params domain.MCPValidationRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
 	if params.ProjectID == "" || params.Code == "" {
-		h.sendMCPError(c, req.ID, 400, "Project ID and code are required")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Project ID and code are required")
 		return
 	}
 
-	// Validate code against project rules
+	// プロジェクトルールに対してコードを検証
 	validationResult, err := h.ruleUseCase.ValidateCode(params.ProjectID, params.Code)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to validate code: "+err.Error())
+		code, msg := mcpx.MapAppErrorToMCP(err)
+		h.sendMCPError(c, req.ID, code, "Failed to validate code: "+msg)
 		return
 	}
 
-	// Convert validation result to MCP format
+	// 検証結果をMCP形式に変換
 	issues := make([]domain.ValidationIssue, 0)
 
-	// Convert errors to validation issues
+	// エラーを検証問題に変換
 	for _, errorMsg := range validationResult.Errors {
 		issue := domain.ValidationIssue{
 			RuleID:   "validation-error",
@@ -239,7 +257,7 @@ func (h *MCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequest) {
 		issues = append(issues, issue)
 	}
 
-	// Convert warnings to validation issues
+	// 警告を検証問題に変換
 	for _, warningMsg := range validationResult.Warnings {
 		issue := domain.ValidationIssue{
 			RuleID:   "validation-warning",
@@ -250,10 +268,9 @@ func (h *MCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequest) {
 		issues = append(issues, issue)
 	}
 
-	// Get applied rules for context
+	// コンテキスト用に適用されたルールを取得
 	projectRules, err := h.ruleUseCase.GetProjectRules(params.ProjectID)
 	if err != nil {
-		c.Error(err)
 		projectRules = &domain.ProjectRules{Rules: []domain.Rule{}}
 	}
 
@@ -266,53 +283,54 @@ func (h *MCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequest) {
 	h.sendMCPResponse(c, req.ID, response)
 }
 
-// handleGetProjectInfo handles the getProjectInfo MCP method
+// handleGetProjectInfo getProjectInfo MCPメソッドを処理
 func (h *MCPHandler) handleGetProjectInfo(c *gin.Context, req domain.MCPRequest) {
 	var params struct {
 		ProjectID string `json:"project_id"`
 	}
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
 	if params.ProjectID == "" {
-		h.sendMCPError(c, req.ID, 400, "Project ID is required")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Project ID is required")
 		return
 	}
 
-	// Get project information - this method needs to be implemented in usecase
-	// For now, return an error
-	h.sendMCPError(c, req.ID, 501, "getProjectInfo not yet implemented")
+	// プロジェクト情報を取得 - このメソッドはusecaseで実装する必要がある
+	// 今のところ、エラーを返す
+	h.sendMCPError(c, req.ID, mcpx.CodeInternal, "getProjectInfo not yet implemented")
 }
 
-// handleAutoDetectProject handles the autoDetectProject MCP method
+// handleAutoDetectProject autoDetectProject MCPメソッドを処理
 func (h *MCPHandler) handleAutoDetectProject(c *gin.Context, req domain.MCPRequest) {
 	var params struct {
 		Path string `json:"path"`
 	}
 
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
 	if params.Path == "" {
-		h.sendMCPError(c, req.ID, 400, "Path is required")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Path is required")
 		return
 	}
 
-	// Auto-detect project
+	// プロジェクトを自動検出
 	result, err := h.projectDetector.AutoDetectProject(params.Path)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 404, "Project not found: "+err.Error())
+		code, msg := mcpx.MapAppErrorToMCP(err)
+		h.sendMCPError(c, req.ID, code, "Project not found: "+msg)
 		return
 	}
 
-	// Convert result to JSON
+	// 結果をJSONに変換
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to serialize result")
+		h.sendMCPError(c, req.ID, mcpx.CodeInternal, "Failed to serialize result")
 		return
 	}
 
@@ -324,14 +342,14 @@ func (h *MCPHandler) handleAutoDetectProject(c *gin.Context, req domain.MCPReque
 	c.JSON(http.StatusOK, response)
 }
 
-// handleScanLocalProjects handles the scanLocalProjects MCP method
+// handleScanLocalProjects scanLocalProjects MCPメソッドを処理
 func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPRequest) {
 	var params struct {
 		BasePath string `json:"base_path"`
 	}
 
 	if err := json.Unmarshal(req.Params, &params); err != nil {
-		h.sendMCPError(c, req.ID, 400, "Invalid parameters")
+		h.sendMCPError(c, req.ID, mcpx.CodeValidation, "Invalid parameters")
 		return
 	}
 
@@ -339,14 +357,15 @@ func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPReque
 		params.BasePath = "/" // デフォルトはルートディレクトリ
 	}
 
-	// Scan local projects
+	// ローカルプロジェクトをスキャン
 	results, err := h.projectDetector.ScanLocalProjects(params.BasePath)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to scan local projects: "+err.Error())
+		code, msg := mcpx.MapAppErrorToMCP(err)
+		h.sendMCPError(c, req.ID, code, "Failed to scan local projects: "+msg)
 		return
 	}
 
-	// Convert results to JSON
+	// 結果をJSONに変換
 	responseData := gin.H{
 		"projects": results,
 		"count":    len(results),
@@ -354,7 +373,7 @@ func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPReque
 
 	responseJSON, err := json.Marshal(responseData)
 	if err != nil {
-		h.sendMCPError(c, req.ID, 500, "Failed to serialize results")
+		h.sendMCPError(c, req.ID, mcpx.CodeInternal, "Failed to serialize results")
 		return
 	}
 
@@ -366,11 +385,11 @@ func (h *MCPHandler) handleScanLocalProjects(c *gin.Context, req domain.MCPReque
 	c.JSON(http.StatusOK, response)
 }
 
-// sendMCPResponse sends a successful MCP response
+// sendMCPResponse 成功したMCPレスポンスを送信
 func (h *MCPHandler) sendMCPResponse(c *gin.Context, id string, result interface{}) {
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
-		h.sendMCPError(c, id, 500, "Failed to marshal response")
+		h.sendMCPError(c, id, mcpx.CodeInternal, "Failed to marshal response")
 		return
 	}
 
@@ -382,7 +401,7 @@ func (h *MCPHandler) sendMCPResponse(c *gin.Context, id string, result interface
 	c.JSON(http.StatusOK, response)
 }
 
-// sendMCPError sends an MCP error response
+// sendMCPError MCPエラーレスポンスを送信
 func (h *MCPHandler) sendMCPError(c *gin.Context, id string, code int, message string) {
 	response := domain.MCPResponse{
 		ID: id,
@@ -395,12 +414,12 @@ func (h *MCPHandler) sendMCPError(c *gin.Context, id string, code int, message s
 	c.JSON(http.StatusOK, response)
 }
 
-// HandleWebSocket handles WebSocket connections for real-time MCP communication
+// HandleWebSocket リアルタイムMCP通信のためのWebSocket接続を処理
 func (h *MCPHandler) HandleWebSocket(c *gin.Context) {
-	// Upgrade to WebSocket connection
+	// WebSocket接続にアップグレード
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return true // Allow all origins for development
+			return true // 開発用にすべてのオリジンを許可
 		},
 	}
 
@@ -411,7 +430,7 @@ func (h *MCPHandler) HandleWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	// Handle WebSocket messages
+	// WebSocketメッセージを処理
 	for {
 		var req domain.MCPRequest
 		err := conn.ReadJSON(&req)
@@ -419,12 +438,12 @@ func (h *MCPHandler) HandleWebSocket(c *gin.Context) {
 			break
 		}
 
-		// Process MCP request
+		// MCPリクエストを処理
 		h.processWebSocketRequest(conn, req)
 	}
 }
 
-// processWebSocketRequest processes MCP requests over WebSocket
+// processWebSocketRequest WebSocket経由でMCPリクエストを処理
 func (h *MCPHandler) processWebSocketRequest(conn *websocket.Conn, req domain.MCPRequest) {
 	switch req.Method {
 	case "getRules":
@@ -436,7 +455,7 @@ func (h *MCPHandler) processWebSocketRequest(conn *websocket.Conn, req domain.MC
 	}
 }
 
-// handleWebSocketGetRules handles getRules over WebSocket
+// handleWebSocketGetRules WebSocket経由でgetRulesを処理
 func (h *MCPHandler) handleWebSocketGetRules(conn *websocket.Conn, req domain.MCPRequest) {
 	var params domain.MCPRuleRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -444,11 +463,62 @@ func (h *MCPHandler) handleWebSocketGetRules(conn *websocket.Conn, req domain.MC
 		return
 	}
 
-	// Implementation similar to HTTP handler
-	// ... (same logic as handleGetRules)
+	if params.ProjectID == "" {
+		h.sendWebSocketError(conn, req.ID, 400, "Project ID is required")
+		return
+	}
+
+	// プロジェクトルールを取得
+	projectRules, err := h.ruleUseCase.GetProjectRules(params.ProjectID)
+	if err != nil {
+		h.sendWebSocketError(conn, req.ID, 500, "Failed to get project rules: "+err.Error())
+		return
+	}
+
+	// 言語が指定されている場合はグローバルルールを取得
+	var globalRules []domain.GlobalRule
+	if params.Language != "" {
+		globalRulesPtr, err := h.globalRuleUseCase.GetGlobalRules(params.Language)
+		if err == nil {
+			// ポインタスライスを値スライスに変換
+			globalRules = make([]domain.GlobalRule, len(globalRulesPtr))
+			for i, gr := range globalRulesPtr {
+				globalRules[i] = *gr
+			}
+		}
+	}
+
+	// プロジェクトルールとグローバルルールを結合
+	appliedRules := make([]domain.Rule, 0, len(projectRules.Rules)+len(globalRules))
+	appliedRules = append(appliedRules, projectRules.Rules...)
+
+	// グローバルルールをプロジェクトルール形式に変換
+	for _, gr := range globalRules {
+		rule := domain.Rule{
+			RuleID:      gr.RuleID,
+			Name:        gr.Name,
+			Description: gr.Description,
+			Type:        gr.Type,
+			Severity:    gr.Severity,
+			Pattern:     gr.Pattern,
+			Message:     gr.Message,
+			IsActive:    gr.IsActive,
+		}
+		appliedRules = append(appliedRules, rule)
+	}
+
+	response := domain.MCPRuleResponse{
+		ProjectID:    params.ProjectID,
+		Language:     params.Language,
+		Rules:        projectRules.Rules,
+		GlobalRules:  globalRules,
+		AppliedRules: appliedRules,
+	}
+
+	h.sendWebSocketResponse(conn, req.ID, response)
 }
 
-// handleWebSocketValidateCode handles validateCode over WebSocket
+// handleWebSocketValidateCode WebSocket経由でvalidateCodeを処理
 func (h *MCPHandler) handleWebSocketValidateCode(conn *websocket.Conn, req domain.MCPRequest) {
 	var params domain.MCPValidationRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -456,11 +526,59 @@ func (h *MCPHandler) handleWebSocketValidateCode(conn *websocket.Conn, req domai
 		return
 	}
 
-	// Implementation similar to HTTP handler
-	// ... (same logic as handleValidateCode)
+	if params.ProjectID == "" || params.Code == "" {
+		h.sendWebSocketError(conn, req.ID, 400, "Project ID and code are required")
+		return
+	}
+
+	// プロジェクトルールに対してコードを検証
+	validationResult, err := h.ruleUseCase.ValidateCode(params.ProjectID, params.Code)
+	if err != nil {
+		h.sendWebSocketError(conn, req.ID, 500, "Failed to validate code: "+err.Error())
+		return
+	}
+
+	// 検証結果をMCP形式に変換
+	issues := make([]domain.ValidationIssue, 0)
+
+	// エラーを検証問題に変換
+	for _, errorMsg := range validationResult.Errors {
+		issue := domain.ValidationIssue{
+			RuleID:   "validation-error",
+			RuleName: "Code Validation Error",
+			Severity: "error",
+			Message:  errorMsg,
+		}
+		issues = append(issues, issue)
+	}
+
+	// 警告を検証問題に変換
+	for _, warningMsg := range validationResult.Warnings {
+		issue := domain.ValidationIssue{
+			RuleID:   "validation-warning",
+			RuleName: "Code Validation Warning",
+			Severity: "warning",
+			Message:  warningMsg,
+		}
+		issues = append(issues, issue)
+	}
+
+	// コンテキスト用に適用されたルールを取得
+	projectRules, err := h.ruleUseCase.GetProjectRules(params.ProjectID)
+	if err != nil {
+		projectRules = &domain.ProjectRules{Rules: []domain.Rule{}}
+	}
+
+	response := domain.MCPValidationResponse{
+		IsValid: validationResult.Valid,
+		Issues:  issues,
+		Rules:   projectRules.Rules,
+	}
+
+	h.sendWebSocketResponse(conn, req.ID, response)
 }
 
-// sendWebSocketResponse sends a response over WebSocket
+// sendWebSocketResponse WebSocket経由でレスポンスを送信
 func (h *MCPHandler) sendWebSocketResponse(conn *websocket.Conn, id string, result interface{}) {
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
@@ -476,7 +594,7 @@ func (h *MCPHandler) sendWebSocketResponse(conn *websocket.Conn, id string, resu
 	conn.WriteJSON(response)
 }
 
-// sendWebSocketError sends an error over WebSocket
+// sendWebSocketError WebSocket経由でエラーを送信
 func (h *MCPHandler) sendWebSocketError(conn *websocket.Conn, id string, code int, message string) {
 	response := domain.MCPResponse{
 		ID: id,

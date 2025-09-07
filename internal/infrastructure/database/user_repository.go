@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/opm008077/RuleMCPServer/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 )
 
 type PostgresUserRepository struct {
@@ -17,14 +17,14 @@ func NewPostgresUserRepository(db *sql.DB) domain.UserRepository {
 
 func (r *PostgresUserRepository) GetByID(id int) (*domain.User, error) {
 	query := `
-		SELECT id, username, email, full_name, role, is_active, created_at, updated_at
+		SELECT id, username, email, full_name, role, is_active, password_hash, created_at, updated_at
 		FROM users WHERE id = $1
 	`
 
 	var user domain.User
 	err := r.db.QueryRow(query, id).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
-		&user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
+		&user.Role, &user.IsActive, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err != nil {
@@ -36,14 +36,14 @@ func (r *PostgresUserRepository) GetByID(id int) (*domain.User, error) {
 
 func (r *PostgresUserRepository) GetByUsername(username string) (*domain.User, error) {
 	query := `
-		SELECT id, username, email, full_name, role, is_active, created_at, updated_at
+		SELECT id, username, email, full_name, role, is_active, password_hash, created_at, updated_at
 		FROM users WHERE username = $1
 	`
 
 	var user domain.User
 	err := r.db.QueryRow(query, username).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
-		&user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
+		&user.Role, &user.IsActive, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err != nil {
@@ -55,14 +55,14 @@ func (r *PostgresUserRepository) GetByUsername(username string) (*domain.User, e
 
 func (r *PostgresUserRepository) GetByEmail(email string) (*domain.User, error) {
 	query := `
-		SELECT id, username, email, full_name, role, is_active, created_at, updated_at
+		SELECT id, username, email, full_name, role, is_active, password_hash, created_at, updated_at
 		FROM users WHERE email = $1
 	`
 
 	var user domain.User
 	err := r.db.QueryRow(query, email).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName,
-		&user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
+		&user.Role, &user.IsActive, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err != nil {
@@ -74,7 +74,7 @@ func (r *PostgresUserRepository) GetByEmail(email string) (*domain.User, error) 
 
 func (r *PostgresUserRepository) GetAll() ([]domain.User, error) {
 	query := `
-		SELECT id, username, email, full_name, role, is_active, created_at, updated_at
+		SELECT id, username, email, full_name, role, is_active, password_hash, created_at, updated_at
 		FROM users ORDER BY id
 	`
 
@@ -89,7 +89,7 @@ func (r *PostgresUserRepository) GetAll() ([]domain.User, error) {
 		var user domain.User
 		err := rows.Scan(
 			&user.ID, &user.Username, &user.Email, &user.FullName,
-			&user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
+			&user.Role, &user.IsActive, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -102,26 +102,26 @@ func (r *PostgresUserRepository) GetAll() ([]domain.User, error) {
 
 func (r *PostgresUserRepository) Create(user *domain.User) error {
 	query := `
-		INSERT INTO users (username, email, full_name, role, is_active)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO users (username, email, full_name, role, is_active, password_hash)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at, updated_at
 	`
 
 	return r.db.QueryRow(
-		query, user.Username, user.Email, user.FullName, user.Role, user.IsActive,
+		query, user.Username, user.Email, user.FullName, user.Role, user.IsActive, user.PasswordHash,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 }
 
 func (r *PostgresUserRepository) Update(user *domain.User) error {
 	query := `
 		UPDATE users 
-		SET username = $1, email = $2, full_name = $3, role = $4, is_active = $5, updated_at = $6
-		WHERE id = $7
+		SET username = $1, email = $2, full_name = $3, role = $4, is_active = $5, password_hash = $6, updated_at = $7
+		WHERE id = $8
 	`
 
 	user.UpdatedAt = time.Now()
 	_, err := r.db.Exec(
-		query, user.Username, user.Email, user.FullName, user.Role, user.IsActive, user.UpdatedAt, user.ID,
+		query, user.Username, user.Email, user.FullName, user.Role, user.IsActive, user.PasswordHash, user.UpdatedAt, user.ID,
 	)
 	return err
 }
@@ -134,7 +134,7 @@ func (r *PostgresUserRepository) Delete(id int) error {
 
 func (r *PostgresUserRepository) GetActiveUsers() ([]domain.User, error) {
 	query := `
-		SELECT id, username, email, full_name, role, is_active, created_at, updated_at
+		SELECT id, username, email, full_name, role, is_active, password_hash, created_at, updated_at
 		FROM users WHERE is_active = true ORDER BY id
 	`
 
@@ -149,7 +149,7 @@ func (r *PostgresUserRepository) GetActiveUsers() ([]domain.User, error) {
 		var user domain.User
 		err := rows.Scan(
 			&user.ID, &user.Username, &user.Email, &user.FullName,
-			&user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
+			&user.Role, &user.IsActive, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -162,7 +162,7 @@ func (r *PostgresUserRepository) GetActiveUsers() ([]domain.User, error) {
 
 func (r *PostgresUserRepository) GetUsersByRole(role string) ([]domain.User, error) {
 	query := `
-		SELECT id, username, email, full_name, role, is_active, created_at, updated_at
+		SELECT id, username, email, full_name, role, is_active, password_hash, created_at, updated_at
 		FROM users WHERE role = $1 ORDER BY id
 	`
 
@@ -177,7 +177,7 @@ func (r *PostgresUserRepository) GetUsersByRole(role string) ([]domain.User, err
 		var user domain.User
 		err := rows.Scan(
 			&user.ID, &user.Username, &user.Email, &user.FullName,
-			&user.Role, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
+			&user.Role, &user.IsActive, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err

@@ -3,10 +3,10 @@ package handler
 import (
 	"net/http"
 	"strings"
-	"time"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
-	"github.com/opm008077/RuleMCPServer/internal/usecase"
 )
 
 type ProjectHandler struct {
@@ -22,7 +22,7 @@ func NewProjectHandler(projectUseCase *usecase.ProjectUseCase) *ProjectHandler {
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	projects, err := h.projectUseCase.GetProjects()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -39,22 +39,17 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
 		return
 	}
 
 	err := h.projectUseCase.CreateProject(req.ProjectID, req.Name, req.Description, req.Language, req.ApplyGlobalRules)
 	if err != nil {
-		// 重複キーエラーの場合、ユーザーフレンドリーなメッセージを表示
-		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			c.JSON(http.StatusConflict, gin.H{
-				"error":      "このプロジェクトIDは既に使用されています。別のプロジェクトIDを指定してください。",
-				"details":    "プロジェクトIDは一意である必要があります。",
-				"suggestion": "例: " + req.ProjectID + "-v2 や " + req.ProjectID + "-" + time.Now().Format("20060102"),
-			})
+		if strings.Contains(err.Error(), "一意制約") {
+			httpx.JSONError(c, http.StatusConflict, httpx.CodeConflict, "このプロジェクトIDは既に使用されています。別のプロジェクトIDを指定してください。", nil)
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -64,7 +59,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	projectID := c.Param("project_id")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project_id is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "project_id is required", nil)
 		return
 	}
 
@@ -76,13 +71,13 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
 		return
 	}
 
 	err := h.projectUseCase.UpdateProject(projectID, req.Name, req.Description, req.Language, req.ApplyGlobalRules)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -92,13 +87,13 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	projectID := c.Param("project_id")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project_id is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "project_id is required", nil)
 		return
 	}
 
 	err := h.projectUseCase.DeleteProject(projectID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 

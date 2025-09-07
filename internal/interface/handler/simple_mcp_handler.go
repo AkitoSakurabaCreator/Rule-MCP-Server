@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/opm008077/RuleMCPServer/internal/domain"
 )
 
 type SimpleMCPHandler struct{}
@@ -15,7 +15,7 @@ func NewSimpleMCPHandler() *SimpleMCPHandler {
 	return &SimpleMCPHandler{}
 }
 
-// HandleMCPRequest handles MCP protocol requests
+// HandleMCPRequest MCPプロトコルリクエストを処理
 func (h *SimpleMCPHandler) HandleMCPRequest(c *gin.Context) {
 	var req domain.MCPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -35,7 +35,7 @@ func (h *SimpleMCPHandler) HandleMCPRequest(c *gin.Context) {
 	}
 }
 
-// handleGetRules handles the getRules MCP method
+// handleGetRules getRules MCPメソッドを処理
 func (h *SimpleMCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest) {
 	var params domain.MCPRuleRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -103,7 +103,7 @@ func (h *SimpleMCPHandler) handleGetRules(c *gin.Context, req domain.MCPRequest)
 	h.sendMCPResponse(c, req.ID, response)
 }
 
-// handleValidateCode handles the validateCode MCP method
+// handleValidateCode validateCode MCPメソッドを処理
 func (h *SimpleMCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequest) {
 	var params domain.MCPValidationRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -163,7 +163,7 @@ func (h *SimpleMCPHandler) handleValidateCode(c *gin.Context, req domain.MCPRequ
 	h.sendMCPResponse(c, req.ID, response)
 }
 
-// handleGetProjectInfo handles the getProjectInfo MCP method
+// handleGetProjectInfo getProjectInfo MCPメソッドを処理
 func (h *SimpleMCPHandler) handleGetProjectInfo(c *gin.Context, req domain.MCPRequest) {
 	var params struct {
 		ProjectID string `json:"project_id"`
@@ -191,7 +191,7 @@ func (h *SimpleMCPHandler) handleGetProjectInfo(c *gin.Context, req domain.MCPRe
 	h.sendMCPResponse(c, req.ID, projectInfo)
 }
 
-// convertGlobalRulesToRules converts GlobalRule to Rule format
+// convertGlobalRulesToRules GlobalRuleをRule形式に変換
 func (h *SimpleMCPHandler) convertGlobalRulesToRules(globalRules []domain.GlobalRule, projectID string) []domain.Rule {
 	rules := make([]domain.Rule, 0, len(globalRules))
 	for _, gr := range globalRules {
@@ -211,12 +211,12 @@ func (h *SimpleMCPHandler) convertGlobalRulesToRules(globalRules []domain.Global
 	return rules
 }
 
-// containsPattern checks if code contains a pattern (simplified)
+// containsPattern コードにパターンが含まれているかチェック（簡易版）
 func containsPattern(code, pattern string) bool {
 	return len(code) > 0 && len(pattern) > 0
 }
 
-// sendMCPResponse sends a successful MCP response
+// sendMCPResponse 成功したMCPレスポンスを送信
 func (h *SimpleMCPHandler) sendMCPResponse(c *gin.Context, id string, result interface{}) {
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
@@ -232,7 +232,7 @@ func (h *SimpleMCPHandler) sendMCPResponse(c *gin.Context, id string, result int
 	c.JSON(http.StatusOK, response)
 }
 
-// sendMCPError sends an MCP error response
+// sendMCPError MCPエラーレスポンスを送信
 func (h *SimpleMCPHandler) sendMCPError(c *gin.Context, id string, code int, message string) {
 	response := domain.MCPResponse{
 		ID: id,
@@ -245,12 +245,12 @@ func (h *SimpleMCPHandler) sendMCPError(c *gin.Context, id string, code int, mes
 	c.JSON(http.StatusOK, response)
 }
 
-// HandleWebSocket handles WebSocket connections for real-time MCP communication
+// HandleWebSocket リアルタイムMCP通信のためのWebSocket接続を処理
 func (h *SimpleMCPHandler) HandleWebSocket(c *gin.Context) {
-	// Upgrade to WebSocket connection
+	// WebSocket接続にアップグレード
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return true // Allow all origins for development
+			return true // 開発用にすべてのオリジンを許可
 		},
 	}
 
@@ -261,7 +261,7 @@ func (h *SimpleMCPHandler) HandleWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	// Handle WebSocket messages
+	// WebSocketメッセージを処理
 	for {
 		var req domain.MCPRequest
 		err := conn.ReadJSON(&req)
@@ -269,12 +269,12 @@ func (h *SimpleMCPHandler) HandleWebSocket(c *gin.Context) {
 			break
 		}
 
-		// Process MCP request
+		// MCPリクエストを処理
 		h.processWebSocketRequest(conn, req)
 	}
 }
 
-// processWebSocketRequest processes MCP requests over WebSocket
+// processWebSocketRequest WebSocket経由でMCPリクエストを処理
 func (h *SimpleMCPHandler) processWebSocketRequest(conn *websocket.Conn, req domain.MCPRequest) {
 	switch req.Method {
 	case "getRules":
@@ -286,7 +286,7 @@ func (h *SimpleMCPHandler) processWebSocketRequest(conn *websocket.Conn, req dom
 	}
 }
 
-// handleWebSocketGetRules handles getRules over WebSocket
+// handleWebSocketGetRules WebSocket経由でgetRulesを処理
 func (h *SimpleMCPHandler) handleWebSocketGetRules(conn *websocket.Conn, req domain.MCPRequest) {
 	var params domain.MCPRuleRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -294,11 +294,11 @@ func (h *SimpleMCPHandler) handleWebSocketGetRules(conn *websocket.Conn, req dom
 		return
 	}
 
-	// Implementation similar to HTTP handler
-	// ... (same logic as handleGetRules)
+	// HTTPハンドラーと同様の実装
+	// ... (handleGetRulesと同じロジック)
 }
 
-// handleWebSocketValidateCode handles validateCode over WebSocket
+// handleWebSocketValidateCode WebSocket経由でvalidateCodeを処理
 func (h *SimpleMCPHandler) handleWebSocketValidateCode(conn *websocket.Conn, req domain.MCPRequest) {
 	var params domain.MCPValidationRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -306,11 +306,11 @@ func (h *SimpleMCPHandler) handleWebSocketValidateCode(conn *websocket.Conn, req
 		return
 	}
 
-	// Implementation similar to HTTP handler
-	// ... (same logic as handleValidateCode)
+	// HTTPハンドラーと同様の実装
+	// ... (handleValidateCodeと同じロジック)
 }
 
-// sendWebSocketResponse sends a response over WebSocket
+// sendWebSocketResponse WebSocket経由でレスポンスを送信
 func (h *SimpleMCPHandler) sendWebSocketResponse(conn *websocket.Conn, id string, result interface{}) {
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
@@ -326,7 +326,7 @@ func (h *SimpleMCPHandler) sendWebSocketResponse(conn *websocket.Conn, id string
 	conn.WriteJSON(response)
 }
 
-// sendWebSocketError sends an error over WebSocket
+// sendWebSocketError WebSocket経由でエラーを送信
 func (h *SimpleMCPHandler) sendWebSocketError(conn *websocket.Conn, id string, code int, message string) {
 	response := domain.MCPResponse{
 		ID: id,

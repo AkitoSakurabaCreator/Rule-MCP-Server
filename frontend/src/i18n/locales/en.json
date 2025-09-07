@@ -17,7 +17,8 @@
     "success": "Success",
     "warning": "Warning",
     "info": "Info",
-    "actions": "Actions"
+    "actions": "Actions",
+    "permissionDenied": "Permission denied"
   },
   "theme": {
     "switchToLight": "Switch to Light Mode",
@@ -218,6 +219,8 @@
     "analytics": "Analytics",
     "mcpMonitoring": "MCP Monitoring",
     "systemLogs": "System Logs",
+    "roles": "Roles",
+    "languages": "Languages",
     "userManagement": "User Management",
     "addUser": "Add User",
     "username": "Username",
@@ -256,6 +259,50 @@
     "successRate": "Success Rate",
     "errorRate": "Error Rate",
     "recentLogs": "Recent Logs",
-    "logLevels": "Log Levels"
+    "logLevels": "Log Levels",
+    "loadError": "Failed to load admin data",
+    "addRole": "Add Role",
+    "editRole": "Edit Role",
+    "description": "Description",
+    "permissions": "Permissions",
+    "usernameEmailRequired": "Username and Email are required",
+    "userCreateSuccess": "User created",
+    "userCreateFailed": "Failed to create user",
+    "userUpdateSuccess": "User updated",
+    "userUpdateFailed": "Failed to update user",
+    "nameRequired": "Name is required",
+    "apiKeyGenerateSuccess": "API key generated",
+    "apiKeyGenerateFailed": "Failed to generate API key",
+    "apiKeyUpdateSuccess": "API key updated",
+    "apiKeyUpdateFailed": "Failed to update API key",
+    "apiKeyDeleteSuccess": "API key deleted",
+    "apiKeyDeleteFailed": "Failed to delete API key",
+    "deleteApiKeyConfirm": "Delete this API key?",
+    "deleteUserConfirm": "Delete this user?",
+    "deleteRoleConfirm": "Delete this role?",
+    "rolePresets": "Role Presets",
+    "presetReadOnly": "ReadOnly",
+    "presetEditor": "Editor",
+    "presetAdmin": "Admin",
+    "addLanguage": "Add Language",
+    "editLanguage": "Edit Language",
+    "code": "Code",
+    "icon": "Icon",
+    "color": "Color",
+    "active": "Active"
+  },
+  "permissions": {
+    "manage_users": {
+      "name": "Manage Users",
+      "desc": "Create, update and delete users and API keys."
+    },
+    "manage_rules": {
+      "name": "Manage Rules",
+      "desc": "Create, update and delete project and global rules."
+    },
+    "manage_roles": {
+      "name": "Manage Roles",
+      "desc": "Create, update and delete roles and permissions."
+    }
   }
 }

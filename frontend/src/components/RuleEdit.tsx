@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -19,6 +19,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Rule } from '../types';
 import { api } from '../services/api';
+import { adminApi, RuleOption } from '../services/adminApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const RuleEdit: React.FC = () => {
   const [rule, setRule] = useState<Partial<Rule>>({
@@ -30,37 +32,24 @@ const RuleEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [customLanguages, setCustomLanguages] = useState<string[]>([]);
-  const [customTypes, setCustomTypes] = useState<string[]>([]);
-  const [customSeverities, setCustomSeverities] = useState<string[]>([]);
+  const [typeOptions, setTypeOptions] = useState<string[]>([]);
+  const [severityOptions, setSeverityOptions] = useState<string[]>([]);
+  const [newType, setNewType] = useState('');
+  const [newSeverity, setNewSeverity] = useState('');
   
   const navigate = useNavigate();
   const { projectId, ruleId } = useParams<{ projectId: string; ruleId: string }>();
   const { t } = useTranslation();
+  const { permissions } = useAuth();
+  const canManageRules = permissions.manageRules;
 
   const isEditMode = !!ruleId;
 
-  useEffect(() => {
-    if (isEditMode && projectId && ruleId) {
-      loadRule();
-    } else {
-      setLoading(false);
-    }
-    loadCustomOptions();
-  }, [isEditMode, projectId, ruleId]);
-
-  // projectIdが変更された時にルールのproject_idを更新
-  useEffect(() => {
-    if (projectId) {
-      setRule(prev => ({ ...prev, project_id: projectId }));
-    }
-  }, [projectId]);
-
-  const loadRule = async () => {
+  const loadRule = useCallback(async () => {
+    if (!projectId || !ruleId) return;
     try {
-      const response = await api.get(`/projects/${projectId}/rules/${ruleId}`);
+      const response = await api.get(`/rules/${projectId}/${ruleId}`);
       const loadedRule = response.data;
-      // is_activeがundefinedの場合はtrueに設定
       if (loadedRule.is_active === undefined) {
         loadedRule.is_active = true;
       }
@@ -71,16 +60,34 @@ const RuleEdit: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, ruleId, t]);
 
-  const loadCustomOptions = async () => {
+  useEffect(() => {
+    if (isEditMode && projectId && ruleId) {
+      loadRule();
+    } else {
+      setLoading(false);
+    }
+    loadOptions();
+  }, [isEditMode, projectId, ruleId, loadRule]);
+
+  // projectIdが変更された時にルールのproject_idを更新
+  useEffect(() => {
+    if (projectId) {
+      setRule(prev => ({ ...prev, project_id: projectId }));
+    }
+  }, [projectId]);
+
+  const loadOptions = async () => {
     try {
-      // カスタムオプションをロード（必要に応じて実装）
-      setCustomLanguages([]);
-      setCustomTypes([]);
-      setCustomSeverities([]);
-    } catch (error) {
-      console.error('Failed to load custom options:', error);
+      const [types, severities] = await Promise.all([
+        adminApi.getRuleOptions('type'),
+        adminApi.getRuleOptions('severity'),
+      ]);
+      setTypeOptions(types.map((o: RuleOption) => o.value));
+      setSeverityOptions(severities.map((o: RuleOption) => o.value));
+    } catch (e) {
+      // 失敗してもデフォルトは維持
     }
   };
 
@@ -91,14 +98,13 @@ const RuleEdit: React.FC = () => {
     setSuccess(null);
 
     try {
-      // ルールデータにproject_idを確実に設定
       const ruleData = {
         ...rule,
         project_id: projectId
       };
 
       if (isEditMode) {
-        await api.put(`/projects/${projectId}/rules/${ruleId}`, ruleData);
+        await api.put(`/rules/${projectId}/${ruleId}`, ruleData);
         setSuccess(t('rules.editSuccess'));
       } else {
         await api.post('/rules', ruleData);
@@ -110,6 +116,16 @@ const RuleEdit: React.FC = () => {
       }, 1500);
     } catch (error: any) {
       console.error('Save error:', error);
+      
+      // 認証エラーの場合はログイン画面にリダイレクト
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        setError('認証エラーが発生しました。再度ログインしてください。');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+        return;
+      }
+      
       setError(error.response?.data?.error || t('rules.saveError'));
     } finally {
       setSaving(false);
@@ -120,25 +136,15 @@ const RuleEdit: React.FC = () => {
     setRule(prev => ({ ...prev, [field]: value }));
   };
 
-  const addCustomOption = (type: 'language' | 'type' | 'severity', value: string) => {
-    if (!value.trim()) return;
-    
-    switch (type) {
-      case 'language':
-        if (!customLanguages.includes(value)) {
-          setCustomLanguages(prev => [...prev, value]);
-        }
-        break;
-      case 'type':
-        if (!customTypes.includes(value)) {
-          setCustomTypes(prev => [...prev, value]);
-        }
-        break;
-      case 'severity':
-        if (!customSeverities.includes(value)) {
-          setCustomSeverities(prev => [...prev, value]);
-        }
-        break;
+  const addOption = async (kind: 'type' | 'severity', value: string) => {
+    const v = (value || '').trim();
+    if (!v) return;
+    try {
+      await adminApi.addRuleOption(kind, v);
+      await loadOptions();
+      if (kind === 'type') setNewType(''); else setNewSeverity('');
+    } catch (e) {
+      // 失敗時も特に止めない
     }
   };
 
@@ -192,107 +198,69 @@ const RuleEdit: React.FC = () => {
               <TextField
                 fullWidth
                 multiline
-                rows={3}
+                rows={4}
                 label={t('rules.description')}
                 value={rule.description || ''}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                required
-                helperText={t('rules.descriptionHelp')}
+                helperText="ルールの概要や目的を説明してください。開発者が理解しやすいように具体的に記述してください。"
+                placeholder="例: JavaScript/TypeScriptファイル向けの基本的な命名規則とスタイルガイド"
               />
             </Grid>
 
             <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
               <FormControl fullWidth required>
-                <InputLabel>{t('rules.type')}</InputLabel>
+                <InputLabel>ルールタイプ</InputLabel>
                 <Select
                   value={rule.type || ''}
                   onChange={(e) => handleInputChange('type', e.target.value)}
-                  label={t('rules.type')}
+                  label="ルールタイプ"
                 >
-                  {Object.entries(t('types', { returnObjects: true })).map(([key, value]) => (
-                    <MenuItem key={key} value={key}>
-                      {value}
-                    </MenuItem>
-                  ))}
-                  {customTypes.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
+                  {typeOptions.map((v) => (
+                    <MenuItem key={v} value={v}>{v}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
-              <Box sx={{ mt: 1 }}>
-                <TextField
-                  size="small"
-                  placeholder={t('rules.addCustomType')}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addCustomOption('type', (e.target as HTMLInputElement).value);
-                      (e.target as HTMLInputElement).value = '';
-                    }
-                  }}
-                />
-                <Button
-                  size="small"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder*="Type"]') as HTMLInputElement;
-                    if (input) {
-                      addCustomOption('type', input.value);
-                      input.value = '';
-                    }
-                  }}
-                >
-                  {t('common.add')}
-                </Button>
-              </Box>
+              {canManageRules && (
+                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value)}
+                    placeholder={t('rules.addCustomType')}
+                  />
+                  <Button size="small" onClick={() => addOption('type', newType)}>
+                    {t('common.add')}
+                  </Button>
+                </Box>
+              )}
             </Grid>
 
             <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
               <FormControl fullWidth required>
-                <InputLabel>{t('rules.severity')}</InputLabel>
+                <InputLabel>重要度</InputLabel>
                 <Select
                   value={rule.severity || ''}
                   onChange={(e) => handleInputChange('severity', e.target.value)}
-                  label={t('rules.severity')}
+                  label="重要度"
                 >
-                  {Object.entries(t('severity', { returnObjects: true })).map(([key, value]) => (
-                    <MenuItem key={key} value={key}>
-                      {value}
-                    </MenuItem>
-                  ))}
-                  {customSeverities.map((severity) => (
-                    <MenuItem key={severity} value={severity}>
-                      {severity}
-                    </MenuItem>
+                  {severityOptions.map((v) => (
+                    <MenuItem key={v} value={v}>{v}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
-              <Box sx={{ mt: 1 }}>
-                <TextField
-                  size="small"
-                  placeholder={t('rules.addCustomSeverity')}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addCustomOption('severity', (e.target as HTMLInputElement).value);
-                      (e.target as HTMLInputElement).value = '';
-                    }
-                  }}
-                />
-                <Button
-                  size="small"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder*="Severity"]') as HTMLInputElement;
-                    if (input) {
-                      addCustomOption('severity', input.value);
-                      input.value = '';
-                    }
-                  }}
-                >
-                  {t('common.add')}
-                </Button>
-              </Box>
+              {canManageRules && (
+                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    value={newSeverity}
+                    onChange={(e) => setNewSeverity(e.target.value)}
+                    placeholder={t('rules.addCustomSeverity')}
+                  />
+                  <Button size="small" onClick={() => addOption('severity', newSeverity)}>
+                    {t('common.add')}
+                  </Button>
+                </Box>
+              )}
             </Grid>
 
             <Grid sx={{ width: { xs: '100%', md: '33.333%' } }}>
@@ -325,26 +293,11 @@ const RuleEdit: React.FC = () => {
             <Grid sx={{ width: '100%' }}>
               <TextField
                 fullWidth
-                label={t('rules.pattern')}
+                label="検索パターン"
                 value={rule.pattern || ''}
                 onChange={(e) => handleInputChange('pattern', e.target.value)}
-                required
-                helperText={
-                  <Box>
-                    <Typography variant="body2" component="span">
-                      {t('rules.patternHelp')}
-                    </Typography>
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" component="div" color="text.secondary">
-                        <strong>例:</strong> console\.log, TODO:, api_key, SELECT \* FROM
-                      </Typography>
-                      <Typography variant="caption" component="div" color="text.secondary">
-                        <strong>ヒント:</strong> 特殊文字は \ でエスケープしてください
-                      </Typography>
-                    </Box>
-                  </Box>
-                }
-                placeholder="例: console\.log"
+                helperText="ルール違反を検出するためのパターンを指定してください。正規表現や文字列パターンが使用できます。空でも構いません。"
+                placeholder="例: console.log, function_name, api_key"
               />
             </Grid>
 
@@ -352,39 +305,37 @@ const RuleEdit: React.FC = () => {
               <TextField
                 fullWidth
                 multiline
-                rows={2}
-                label={t('rules.message')}
+                rows={6}
+                label="ルール内容"
                 value={rule.message || ''}
                 onChange={(e) => handleInputChange('message', e.target.value)}
-                required
-                helperText={
-                  <Box>
-                    <Typography variant="body2" component="span">
-                      {t('rules.messageHelp')}
-                    </Typography>
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" component="div" color="text.secondary">
-                        <strong>例:</strong> Console.log detected. Use proper logging framework in production.
-                      </Typography>
-                      <Typography variant="caption" component="div" color="text.secondary">
-                        <strong>ヒント:</strong> 開発者にとって分かりやすく、修正方法も含めてください
-                      </Typography>
-                    </Box>
-                  </Box>
-                }
-                placeholder="例: Console.log detected. Use proper logging framework in production."
+                helperText="ルールの詳細な内容を記述してください。開発者にとって分かりやすく、修正方法も含めてください。Frontmatter形式（---で囲む）も使用できます。"
+                placeholder={`例:
+---
+description: JavaScript/TypeScriptファイル向けの基本的な命名規則とスタイルガイド
+globs: "**/*.{js,ts,jsx,tsx}"
+---
+- 変数名とプロパティ名はキャメルケース（camelCase）を使用してください。
+- 関数名やメソッド名は、処理内容を表す動詞から始めてください。
+- 定数は大文字スネークケース（UPPER_SNAKE_CASE）で定義してください。`}
               />
             </Grid>
           </Grid>
 
-          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={saving}
-            >
-              {saving ? t('common.saving') : (isEditMode ? t('common.save') : t('common.create'))}
-            </Button>
+          <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+            {canManageRules ? (
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={saving}
+              >
+                {saving ? t('common.saving') : (isEditMode ? t('common.save') : t('common.create'))}
+              </Button>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {t('common.permissionDenied') || '権限がありません'}
+              </Typography>
+            )}
             <Button
               variant="outlined"
               onClick={() => navigate(`/projects/${projectId}/rules`)}

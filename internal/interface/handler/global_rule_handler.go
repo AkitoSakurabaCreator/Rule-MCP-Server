@@ -4,31 +4,34 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/usecase"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
-	"github.com/opm008077/RuleMCPServer/internal/domain"
-	"github.com/opm008077/RuleMCPServer/internal/usecase"
 )
 
 type GlobalRuleHandler struct {
 	globalRuleUseCase *usecase.GlobalRuleUseCase
+	languageRepo      domain.LanguageRepository
 }
 
-func NewGlobalRuleHandler(globalRuleUseCase *usecase.GlobalRuleUseCase) *GlobalRuleHandler {
+func NewGlobalRuleHandler(globalRuleUseCase *usecase.GlobalRuleUseCase, languageRepo domain.LanguageRepository) *GlobalRuleHandler {
 	return &GlobalRuleHandler{
 		globalRuleUseCase: globalRuleUseCase,
+		languageRepo:      languageRepo,
 	}
 }
 
 func (h *GlobalRuleHandler) GetGlobalRules(c *gin.Context) {
 	language := c.Param("language")
 	if language == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "language parameter is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "language parameter is required", nil)
 		return
 	}
 
 	rules, err := h.globalRuleUseCase.GetGlobalRules(language)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -36,6 +39,11 @@ func (h *GlobalRuleHandler) GetGlobalRules(c *gin.Context) {
 }
 
 func (h *GlobalRuleHandler) CreateGlobalRule(c *gin.Context) {
+	// 権限チェック（manage_rules）
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
+		return
+	}
 	var req struct {
 		Language    string `json:"language" binding:"required"`
 		RuleID      string `json:"rule_id" binding:"required"`
@@ -48,13 +56,13 @@ func (h *GlobalRuleHandler) CreateGlobalRule(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
 		return
 	}
 
 	err := h.globalRuleUseCase.CreateGlobalRule(req.Language, req.RuleID, req.Name, req.Description, req.Type, req.Severity, req.Pattern, req.Message)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -62,17 +70,22 @@ func (h *GlobalRuleHandler) CreateGlobalRule(c *gin.Context) {
 }
 
 func (h *GlobalRuleHandler) DeleteGlobalRule(c *gin.Context) {
+	// 権限チェック（manage_rules）
+	if perms, ok := c.Get("permissions"); !ok || !perms.(map[string]bool)["manage_rules"] {
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Permission manage_rules required", nil)
+		return
+	}
 	language := c.Param("language")
 	ruleID := c.Param("rule_id")
 
 	if language == "" || ruleID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "language and rule_id are required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "language and rule_id are required", nil)
 		return
 	}
 
 	err := h.globalRuleUseCase.DeleteGlobalRule(language, ruleID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -82,7 +95,7 @@ func (h *GlobalRuleHandler) DeleteGlobalRule(c *gin.Context) {
 func (h *GlobalRuleHandler) GetLanguages(c *gin.Context) {
 	languages, err := h.globalRuleUseCase.GetAllLanguages()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.JSONFromError(c, err)
 		return
 	}
 
@@ -107,14 +120,14 @@ type ImportGlobalRulesRequest struct {
 func (h *GlobalRuleHandler) ExportGlobalRules(c *gin.Context) {
 	var req ExportGlobalRulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", nil)
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
@@ -186,14 +199,14 @@ func (h *GlobalRuleHandler) ExportGlobalRules(c *gin.Context) {
 func (h *GlobalRuleHandler) ImportGlobalRules(c *gin.Context) {
 	var req ImportGlobalRulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", nil)
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
@@ -271,46 +284,43 @@ type UpdateLanguageRequest struct {
 func (h *GlobalRuleHandler) CreateLanguage(c *gin.Context) {
 	var req CreateLanguageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", err.Error())
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
 	// 言語コードの重複チェック
-	existingLanguages, err := h.globalRuleUseCase.GetAllLanguages()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing languages"})
+	_, err := h.languageRepo.GetByCode(req.Code)
+	if err == nil {
+		httpx.JSONError(c, http.StatusConflict, httpx.CodeConflict, "Language code already exists", nil)
 		return
 	}
 
-	for _, lang := range existingLanguages {
-		if lang == req.Code {
-			c.JSON(http.StatusConflict, gin.H{"error": "Language code already exists"})
-			return
-		}
-	}
-
-	// 言語作成処理（簡易実装）
-	languageInfo := LanguageInfo{
+	// 言語を作成
+	language := &domain.Language{
 		Code:        req.Code,
 		Name:        req.Name,
 		Description: req.Description,
 		Icon:        req.Icon,
 		Color:       req.Color,
 		IsActive:    true,
-		CreatedAt:   time.Now().Format(time.RFC3339),
-		UpdatedAt:   time.Now().Format(time.RFC3339),
+	}
+
+	err = h.languageRepo.Create(language)
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message":  "Language created successfully",
-		"language": languageInfo,
+		"language": language,
 	})
 }
 
@@ -318,41 +328,57 @@ func (h *GlobalRuleHandler) CreateLanguage(c *gin.Context) {
 func (h *GlobalRuleHandler) UpdateLanguage(c *gin.Context) {
 	languageCode := c.Param("code")
 	if languageCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Language code is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Language code is required", nil)
 		return
 	}
 
 	var req UpdateLanguageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Invalid request data", err.Error())
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
-	// 言語更新処理（簡易実装）
-	languageInfo := LanguageInfo{
-		Code:        languageCode,
-		Name:        req.Name,
-		Description: req.Description,
-		Icon:        req.Icon,
-		Color:       req.Color,
-		IsActive:    true,
-		UpdatedAt:   time.Now().Format(time.RFC3339),
+	// 既存の言語を取得
+	language, err := h.languageRepo.GetByCode(languageCode)
+	if err != nil {
+		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "Language not found", nil)
+		return
 	}
 
+	// フィールドを更新
+	if req.Name != "" {
+		language.Name = req.Name
+	}
+	if req.Description != "" {
+		language.Description = req.Description
+	}
+	if req.Icon != "" {
+		language.Icon = req.Icon
+	}
+	if req.Color != "" {
+		language.Color = req.Color
+	}
 	if req.IsActive != nil {
-		languageInfo.IsActive = *req.IsActive
+		language.IsActive = *req.IsActive
+	}
+
+	// データベースを更新
+	err = h.languageRepo.Update(language)
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Language updated successfully",
-		"language": languageInfo,
+		"language": language,
 	})
 }
 
@@ -360,19 +386,30 @@ func (h *GlobalRuleHandler) UpdateLanguage(c *gin.Context) {
 func (h *GlobalRuleHandler) DeleteLanguage(c *gin.Context) {
 	languageCode := c.Param("code")
 	if languageCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Language code is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Language code is required", nil)
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "Admin access required", nil)
 		return
 	}
 
-	// 言語削除処理（簡易実装）
-	// 実際の実装では、関連するルールの確認が必要
+	// 言語が存在するかチェック
+	_, err := h.languageRepo.GetByCode(languageCode)
+	if err != nil {
+		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "Language not found", nil)
+		return
+	}
+
+	// 言語を削除
+	err = h.languageRepo.Delete(languageCode)
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Language deleted successfully",
@@ -384,7 +421,7 @@ func (h *GlobalRuleHandler) DeleteLanguage(c *gin.Context) {
 func (h *GlobalRuleHandler) GetLanguageInfo(c *gin.Context) {
 	languageCode := c.Param("code")
 	if languageCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Language code is required"})
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Language code is required", nil)
 		return
 	}
 

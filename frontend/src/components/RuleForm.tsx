@@ -12,11 +12,15 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../services/api';
+import { adminApi, RuleOption } from '../services/adminApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const RuleForm: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { permissions } = useAuth();
+  const canManageRules = permissions.manageRules;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -32,11 +36,30 @@ const RuleForm: React.FC = () => {
     message: '',
   });
 
+  const [typeOptions, setTypeOptions] = useState<string[]>([]);
+  const [severityOptions, setSeverityOptions] = useState<string[]>([]);
+  const [newType, setNewType] = useState('');
+  const [newSeverity, setNewSeverity] = useState('');
+
   useEffect(() => {
     if (projectId) {
       setFormData(prev => ({ ...prev, project_id: projectId }));
     }
+    loadOptions();
   }, [projectId]);
+
+  const loadOptions = async () => {
+    try {
+      const [types, severities] = await Promise.all([
+        adminApi.getRuleOptions('type'),
+        adminApi.getRuleOptions('severity'),
+      ]);
+      setTypeOptions(types.map((o: RuleOption) => o.value));
+      setSeverityOptions(severities.map((o: RuleOption) => o.value));
+    } catch (e) {
+      // 無視
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +71,21 @@ const RuleForm: React.FC = () => {
       await api.post('/rules', formData);
       setSuccess(t('rules.createSuccess'));
       setTimeout(() => {
-        navigate('/');
+        navigate(`/projects/${projectId}/rules`);
       }, 1500);
     } catch (error: any) {
+      console.error('Rule creation error:', error);
       const errorData = error.response?.data;
+      
+      // 認証エラーの場合はログイン画面にリダイレクト
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        setError('認証エラーが発生しました。再度ログインしてください。');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+        return;
+      }
+      
       if (errorData?.details && errorData?.suggestion) {
         setError(`${errorData.error}\n\n詳細: ${errorData.details}\n\n提案: ${errorData.suggestion}`);
       } else {
@@ -67,6 +101,18 @@ const RuleForm: React.FC = () => {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const addOption = async (kind: 'type' | 'severity', value: string) => {
+    const v = (value || '').trim();
+    if (!v) return;
+    try {
+      await adminApi.addRuleOption(kind, v);
+      await loadOptions();
+      if (kind === 'type') setNewType(''); else setNewSeverity('');
+    } catch (e) {
+      // 無視
+    }
   };
 
   return (
@@ -101,73 +147,101 @@ const RuleForm: React.FC = () => {
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             multiline
-            rows={3}
-            helperText={t('rules.descriptionHelp')}
+            rows={4}
+            helperText="ルールの概要や目的を説明してください。開発者が理解しやすいように具体的に記述してください。"
+            placeholder="例: JavaScript/TypeScriptファイル向けの基本的な命名規則とスタイルガイド"
           />
 
-          <TextField
-            select
-            label={t('rules.type')}
-            value={formData.type}
-            onChange={(e) => handleChange('type', e.target.value)}
-            required
-            helperText={t('rules.typeHelp')}
-          >
-            {Object.entries(t('types', { returnObjects: true })).map(([key, value]) => (
-              <MenuItem key={key} value={key}>
-                {value as string}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField
+              select
+              label="ルールタイプ"
+              value={formData.type}
+              onChange={(e) => handleChange('type', e.target.value)}
+              required
+              helperText="ルールの種類を選択してください。style（スタイル）、security（セキュリティ）、performance（パフォーマンス）など"
+              sx={{ flex: 1 }}
+            >
+              {typeOptions.map((v) => (
+                <MenuItem key={v} value={v}>{v}</MenuItem>
+              ))}
+            </TextField>
+            {canManageRules && (
+              <>
+                <TextField size="small" value={newType} onChange={(e) => setNewType(e.target.value)} placeholder={t('rules.addCustomType')} />
+                <Button size="small" onClick={() => addOption('type', newType)}>{t('common.add')}</Button>
+              </>
+            )}
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField
+              select
+              label="重要度"
+              value={formData.severity}
+              onChange={(e) => handleChange('severity', e.target.value)}
+              required
+              helperText="ルール違反の重要度を選択してください。error（エラー）、warning（警告）、info（情報）"
+              sx={{ flex: 1 }}
+            >
+              {severityOptions.map((v) => (
+                <MenuItem key={v} value={v}>{v}</MenuItem>
+              ))}
+            </TextField>
+            {canManageRules && (
+              <>
+                <TextField size="small" value={newSeverity} onChange={(e) => setNewSeverity(e.target.value)} placeholder={t('rules.addCustomSeverity')} />
+                <Button size="small" onClick={() => addOption('severity', newSeverity)}>{t('common.add')}</Button>
+              </>
+            )}
+          </Box>
 
           <TextField
-            select
-            label={t('rules.severity')}
-            value={formData.severity}
-            onChange={(e) => handleChange('severity', e.target.value)}
-            required
-            helperText={t('rules.severityHelp')}
-          >
-            {Object.entries(t('severity', { returnObjects: true })).map(([key, value]) => (
-              <MenuItem key={key} value={key}>
-                {value as string}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            label={t('rules.pattern')}
+            label="検索パターン"
             value={formData.pattern}
             onChange={(e) => handleChange('pattern', e.target.value)}
-            required
-            helperText={t('rules.patternHelp')}
+            helperText="ルール違反を検出するためのパターンを指定してください。正規表現や文字列パターンが使用できます。空でも構いません。"
+            placeholder="例: console.log, function_name, api_key"
           />
 
           <TextField
-            label={t('rules.message')}
+            label="ルール内容"
             value={formData.message}
             onChange={(e) => handleChange('message', e.target.value)}
-            required
             multiline
-            rows={2}
-            helperText={t('rules.messageHelp')}
+            rows={6}
+            helperText="ルールの詳細な内容を記述してください。開発者にとって分かりやすく、修正方法も含めてください。Frontmatter形式（---で囲む）も使用できます。"
+            placeholder={`例:
+---
+description: JavaScript/TypeScriptファイル向けの基本的な命名規則とスタイルガイド
+globs: "**/*.{js,ts,jsx,tsx}"
+---
+- 変数名とプロパティ名はキャメルケース（camelCase）を使用してください。
+- 関数名やメソッド名は、処理内容を表す動詞から始めてください。
+- 定数は大文字スネークケース（UPPER_SNAKE_CASE）で定義してください。`}
           />
 
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', alignItems: 'center' }}>
             <Button
               variant="outlined"
-              onClick={() => navigate('/')}
+              onClick={() => navigate(`/projects/${projectId}/rules`)}
               disabled={loading}
             >
               {t('common.cancel')}
             </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading}
-            >
-              {loading ? t('common.loading') : t('common.add')}
-            </Button>
+            {canManageRules ? (
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={loading}
+              >
+                {loading ? t('common.loading') : t('common.add')}
+              </Button>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {t('common.permissionDenied')}
+              </Typography>
+            )}
           </Box>
         </Box>
       </CardContent>
