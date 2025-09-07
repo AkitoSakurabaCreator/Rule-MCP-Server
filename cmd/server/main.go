@@ -46,7 +46,7 @@ func (t *ActiveTracker) CountSince(d time.Duration) int {
 	return c
 }
 
-// generateRandomSecret generates a cryptographically secure random secret
+// generateRandomSecret 暗号学的に安全なランダムシークレットを生成
 func generateRandomSecret(length int) string {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
@@ -55,7 +55,7 @@ func generateRandomSecret(length int) string {
 	return hex.EncodeToString(bytes)
 }
 
-// hashAPIKey hashes an API key using bcrypt
+// hashAPIKey bcryptを使用してAPIキーをハッシュ化
 func hashAPIKey(apiKey string) (string, error) {
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(apiKey), bcrypt.DefaultCost)
 	if err != nil {
@@ -64,7 +64,7 @@ func hashAPIKey(apiKey string) (string, error) {
 	return string(hashedBytes), nil
 }
 
-// verifyAPIKey verifies an API key against its hash
+// verifyAPIKey APIキーをハッシュと照合して検証
 func verifyAPIKey(apiKey, hashedKey string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedKey), []byte(apiKey))
 	return err == nil
