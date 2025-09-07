@@ -37,14 +37,73 @@ i18n
     resources,
     fallbackLng: 'en',
     debug: process.env.NODE_ENV === 'development',
+    
+    // 開発環境でのデバッグ情報
+    ...(process.env.NODE_ENV === 'development' && {
+      saveMissing: true,
+      missingKeyHandler: (lng: string, ns: string, key: string) => {
+        console.warn(`Missing translation: ${lng}.${ns}.${key}`);
+      },
+    }),
 
     interpolation: {
       escapeValue: false,
     },
 
     detection: {
-      order: ['localStorage', 'navigator'],
+      // 検出の優先順位: localStorage > URL > HTMLタグ > navigator > fallback
+      order: ['localStorage', 'querystring', 'htmlTag', 'navigator', 'path', 'subdomain'],
       caches: ['localStorage'],
+      
+      // ブラウザの言語コードとアプリの言語コードのマッピング
+      lookupLocalStorage: 'i18nextLng',
+      lookupQuerystring: 'lng',
+      lookupFromPathIndex: 0,
+      lookupFromSubdomainIndex: 0,
+      
+      // サポートする言語の制限
+      supportedLngs: ['en', 'ja', 'zh-CN', 'hi', 'es', 'ar'],
+      
+      // 言語コードの正規化
+      load: 'languageOnly',
+      
+      // ブラウザの言語コードをアプリの言語コードにマッピング
+      convertDetectedLanguage: (lng: string) => {
+        // ブラウザの言語コードをアプリでサポートする言語コードに変換
+        const languageMap: { [key: string]: string } = {
+          'ja': 'ja',
+          'ja-JP': 'ja',
+          'en': 'en',
+          'en-US': 'en',
+          'en-GB': 'en',
+          'zh': 'zh-CN',
+          'zh-CN': 'zh-CN',
+          'zh-Hans': 'zh-CN',
+          'zh-Hans-CN': 'zh-CN',
+          'hi': 'hi',
+          'hi-IN': 'hi',
+          'es': 'es',
+          'es-ES': 'es',
+          'es-MX': 'es',
+          'ar': 'ar',
+          'ar-SA': 'ar',
+          'ar-AE': 'ar',
+        };
+        
+        // 完全一致をチェック
+        if (languageMap[lng]) {
+          return languageMap[lng];
+        }
+        
+        // 言語コードのみをチェック（例: 'ja-JP' -> 'ja'）
+        const baseLang = lng.split('-')[0];
+        if (languageMap[baseLang]) {
+          return languageMap[baseLang];
+        }
+        
+        // デフォルトは英語
+        return 'en';
+      },
     },
   });
 
