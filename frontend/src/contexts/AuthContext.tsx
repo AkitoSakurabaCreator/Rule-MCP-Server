@@ -99,7 +99,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // APIクライアントにトークンを設定
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'ログインに失敗しました');
+      const errorData = error.response?.data;
+      const message = errorData?.message || errorData?.error || 'ログインに失敗しました';
+      throw new Error(message);
     }
   };
 
@@ -132,7 +134,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // APIクライアントにトークンを設定
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'アカウント作成に失敗しました');
+      const errorData = error.response?.data;
+      const message = errorData?.message || errorData?.error || 'アカウント作成に失敗しました';
+      throw new Error(message);
     }
   };
 

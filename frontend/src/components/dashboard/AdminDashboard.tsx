@@ -197,9 +197,9 @@ const AdminDashboard: React.FC = () => {
         }, { INFO: 0, WARN: 0, ERROR: 0 });
         setLogCounts(counts);
         setRoles(rls);
-        // MCP perf
+        // MCPパフォーマンス
         setMcpPerf(perf as any);
-        // settings
+        // 設定
         const da = (conf as any).defaultAccessLevel || 'public';
         const rpm = parseInt((conf as any).requestsPerMinute || '100', 10) || 100;
         setSettings({ defaultAccessLevel: da, requestsPerMinute: rpm });
@@ -226,7 +226,7 @@ const AdminDashboard: React.FC = () => {
         const perf = await adminApi.getMCPPerformance();
         setMcpPerf(perf as any);
       } catch (e: any) {
-        // ignore transient errors
+        // 一時的なエラーを無視
       }
     };
     // 初回即時 + 5秒間隔
