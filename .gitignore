@@ -206,3 +206,4 @@ frontend/src/stories/
 
 cmd/mcp-server/node_modules
 .env.production
+.env.production
