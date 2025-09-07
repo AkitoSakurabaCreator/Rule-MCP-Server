@@ -202,4 +202,13 @@ export const adminApi = {
     const response = await api.post('/admin/bulk-import', params);
     return response.data;
   },
+
+  // 承認待ちユーザー管理
+  getPendingUsers: async (): Promise<AdminUser[]> => {
+    const response = await api.get('/auth/pending-users');
+    return response.data;
+  },
+  approveUser: async (userId: number, approve: boolean): Promise<void> => {
+    await api.post('/auth/approve-user', { userId, approve });
+  },
 };
