@@ -415,7 +415,7 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"avgMs": avgMs, "successRate": succRate, "errorRate": errRate, "p95Ms": int(p95 + 0.5)})
 		})
 		admin.GET("/system-logs", func(c *gin.Context) {
-			// Return recent MCP request logs as system logs
+			// 最近のMCPリクエストログをシステムログとして返す
 			if db == nil || db.DB == nil {
 				c.JSON(http.StatusOK, []gin.H{})
 				return
@@ -487,7 +487,7 @@ func main() {
 			api.POST("/global-rules/import", globalRuleHandler.ImportGlobalRules)
 		}
 
-		// MCP endpoints
+		// MCPエンドポイント
 		projectDetector := usecase.NewProjectDetector(projectRepo, ruleRepo)
 		mcpHandler := handler.NewMCPHandler(ruleUseCase, globalRuleUseCase, projectDetector)
 		// inject metrics repo via setter
