@@ -490,7 +490,7 @@ func main() {
 		// MCPエンドポイント
 		projectDetector := usecase.NewProjectDetector(projectRepo, ruleRepo)
 		mcpHandler := handler.NewMCPHandler(ruleUseCase, globalRuleUseCase, projectDetector)
-		// inject metrics repo via setter
+		// セッター経由でメトリクスリポジトリを注入
 		mcpHandler.SetMetricsRepo(metricsRepo)
 		mcp := r.Group("/mcp")
 		{
