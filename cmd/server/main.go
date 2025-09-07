@@ -171,6 +171,7 @@ func main() {
 	auth := r.Group("/api/v1/auth")
 	{
 		auth.POST("/login", authHandler.Login)
+		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/register", authHandler.Register)
 		auth.GET("/validate", authHandler.ValidateToken)
 		auth.GET("/me", authHandler.Me)
