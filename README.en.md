@@ -16,6 +16,7 @@ A Model Context Protocol (MCP) server that enables AI agents (Cursor, Claude Cod
 - **React-based Web UI** for rule management
 - **Multi-language support (i18n)**: English, Japanese, Chinese, Hindi, Spanish, Arabic
 - **Dark theme support**: Light/Dark mode toggle
+- **Grafana monitoring dashboard**: System metrics, MCP request monitoring, alerting
 - **Clean architecture** for high maintainability
 
 ## 🚀 Quick Start
@@ -813,6 +814,87 @@ Supports the following languages:
 - **Rule management**: Project-specific rules, global rules
 - **Code validation**: Real-time rule violation checking
 - **Responsive design**: Mobile and tablet support
+
+## 📊 Monitoring & Metrics
+
+### Grafana Monitoring Dashboard
+
+Rule MCP Server includes a comprehensive monitoring system.
+
+#### Monitored Metrics
+
+1. **Nginx Request Rate**
+   - HTTP request processing speed
+   - Request count by status code
+
+2. **Nginx Response Time**
+   - 95th and 50th percentile response times
+
+3. **System Statistics**
+   - Total users
+   - Total projects
+   - Total rules
+
+4. **MCP Request Rate**
+   - Request count by MCP method
+   - Success/error statistics
+
+5. **MCP Response Time**
+   - MCP request processing time
+
+6. **Active Sessions & API Keys**
+   - Currently active session count
+   - Active API key count
+
+7. **System Load**
+   - CPU usage
+
+8. **MCP Success & Error Rate**
+   - Request success and error rates
+
+#### Access Methods
+
+##### Development Environment
+- **Grafana**: http://localhost:14000
+  - Username: `admin`
+  - Password: `admin123`
+- **Prometheus**: http://localhost:19090
+
+##### Production Environment
+- **Grafana**: http://localhost:14000
+  - Username: Environment variable `GRAFANA_ADMIN_USER` (default: `admin`)
+  - Password: Environment variable `GRAFANA_ADMIN_PASSWORD` (default: `admin123`)
+- **Prometheus**: http://localhost:19090
+
+#### Alert Configuration
+
+The following alerts are configured:
+
+- **High Error Rate**: When MCP request error rate exceeds 10%
+- **High Response Time**: When 95th percentile response time exceeds 1 second
+- **High System Load**: When system load exceeds 80%
+- **Database Connection Failure**: When PostgreSQL connection is lost
+- **Nginx High Error Rate**: When 5xx error rate exceeds 5%
+- **Disk Space Low**: When disk usage exceeds 90%
+
+#### Customization
+
+##### Dashboard Editing
+1. Login to Grafana
+2. Open the dashboard
+3. Click the "Settings" button in the top right
+4. Select "JSON Model" to edit the JSON
+
+##### Adding New Metrics
+1. Add metrics to `internal/interface/handler/metrics_handler.go`
+2. Add panels to the dashboard
+3. Configure Prometheus queries
+
+##### Adding Alert Rules
+1. Add rules to `prometheus/rules/rule-mcp-alerts.yml`
+2. Restart Prometheus
+
+For details, see [Grafana README](grafana/README.md).
 
 ## Rule Definition
 
