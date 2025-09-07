@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -27,6 +27,26 @@ const AppContent: React.FC = () => {
   
   // RTL言語のサポート
   const isRTL = ['ar', 'he', 'fa'].includes(i18n.language);
+  
+  // 言語変更時にHTMLタグの言語属性を更新
+  useEffect(() => {
+    const updateHtmlLang = () => {
+      const htmlElement = document.documentElement;
+      htmlElement.setAttribute('lang', i18n.language);
+      htmlElement.setAttribute('dir', isRTL ? 'rtl' : 'ltr');
+    };
+    
+    // 初期設定
+    updateHtmlLang();
+    
+    // 言語変更時のイベントリスナー
+    i18n.on('languageChanged', updateHtmlLang);
+    
+    // クリーンアップ
+    return () => {
+      i18n.off('languageChanged', updateHtmlLang);
+    };
+  }, [i18n, isRTL]);
   
   const theme = createTheme({
     direction: isRTL ? 'rtl' : 'ltr',
