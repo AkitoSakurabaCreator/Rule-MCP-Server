@@ -3,31 +3,31 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A MCP (Model Context Protocol) server that allows AI agents (Cursor, Claude Code, Cline) to retrieve and apply common coding rules.
+A Model Context Protocol (MCP) server that enables AI agents (Cursor, Claude Code, Cline) to retrieve and apply common coding rules across projects.
 
 ## Features
 
-- Project-specific rule management
-- Language-specific global rule management
-- Project-specific global rule application settings
-- Code rule violation validation
-- Rule distribution via MCP
-- RESTful API endpoints
+- **Project-specific rule management**
+- **Language-specific global rule management**
+- **Configurable global rule application per project**
+- **Code rule violation validation**
+- **Rule distribution via MCP protocol**
+- **RESTful API endpoints**
 - **React-based Web UI** for rule management
 - **Multi-language support (i18n)**: English, Japanese, Chinese, Hindi, Spanish, Arabic
 - **Dark theme support**: Light/Dark mode toggle
-- **Clean Architecture** for high maintainability
+- **Clean architecture** for high maintainability
 
 ## 🚀 Quick Start
 
-### Pattern 1: Server Already Running
+### Option 1: Using Existing Server (Recommended)
 
-If the Rule MCP Server is already running, you only need to configure your AI agent.
+If a Rule MCP Server is already running, simply configure your AI agent:
 
 #### 1. Install MCP Server
 
 ```bash
-# Via pnpm dlx (recommended, no installation required)
+# Via pnpm dlx (recommended - no installation required)
 pnpm dlx rule-mcp-server
 
 # Or global installation
@@ -53,23 +53,21 @@ claude mcp add rule-mcp-server \
   --env MCP_API_KEY=your_api_key \
   -- pnpm dlx rule-mcp-server
 
-# Reference: Anthropic official docs
-# https://docs.anthropic.com/ja/docs/claude-code/mcp
+# Reference: Anthropic official documentation
+# https://docs.anthropic.com/en/docs/claude-code/mcp
 ```
 
 #### 3. Start Using!
 
-Restart your AI agent (Cursor/Claude Code) and it will automatically retrieve and apply coding rules.
+Restart your AI agent (Cursor/Claude Code) and you can now automatically retrieve and apply coding rules.
 
 **📦 npm package**: [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
 
-Note: `MCP_API_KEY` is optional (Public access works without it). Set it only for team operations or when using management APIs.
-
 ---
 
-### Pattern 2: Set Up Your Own Server
+### Option 2: Self-Hosted Server
 
-If you want to set up and run your own Rule MCP Server, follow these steps. **We recommend using the production environment.**
+To run your own Rule MCP Server for production use:
 
 #### 1. Environment Setup
 
@@ -81,12 +79,12 @@ cp env.production.example .env.production
 nano .env.production
 ```
 
-**Required settings for production:**
-- `JWT_SECRET`: Strong random string (generation methods below)
-- `ALLOWED_ORIGINS`: Comma-separated list of allowed origins
+**Required production settings:**
+- `JWT_SECRET`: Strong random string (generation method below)
+- `ALLOWED_ORIGINS`: Comma-separated allowed origins
 - `ENV=production`: Set to production mode
 
-**Secret key generation methods:**
+**Secret key generation:**
 ```bash
 # Using OpenSSL
 openssl rand -hex 32
@@ -98,19 +96,19 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-#### 2. Server Startup
+#### 2. Start Server
 
 ##### Production Environment (Recommended)
 ```bash
 # Start with production Docker Compose
 docker compose -f docker-compose.prod.yml up -d
 
-# Health check
+# Verify operation
 curl http://localhost:18080/api/v1/health
-# -> {"status":"ok"} means the server is running
+# -> {"status":"ok"} if running
 ```
 
-**Production Environment Access:**
+**Production access:**
 - Web UI: http://localhost:13000
 - API: http://localhost:18080/api/v1
 - Database: localhost:15432
@@ -123,33 +121,33 @@ cp env.development.example .env.development
 # Start with development Docker Compose
 docker compose -f docker-compose.dev.yml up -d
 
-# Health check
+# Verify operation
 curl http://localhost:18080/api/v1/health
-# -> {"status":"ok"} means the server is running
+# -> {"status":"ok"} if running
 ```
 
-**Development Environment Access:**
+**Development access:**
 - Web UI: http://localhost:13000
 - API: http://localhost:18080/api/v1
 - Database: localhost:15432
 
-##### Team Operation
+##### Team Usage
 ```bash
-# Start with production setup (for team sharing)
+# Start in production mode (for team sharing)
 docker compose -f docker-compose.prod.yml up -d
 
-# Health check
+# Verify operation
 curl http://localhost:18080/api/v1/health
-# -> {"status":"ok"} means the server is running
+# -> {"status":"ok"} if running
 ```
 
-**Team Operation Access:**
-- Web UI: http://[server-ip]:13000
-- API: http://[server-ip]:18080/api/v1
-- Database: [server-ip]:15432
+**Team access:**
+- Web UI: http://[server-IP]:13000
+- API: http://[server-IP]:18080/api/v1
+- Database: [server-IP]:15432
 
-#### LAN exposure example (team operation)
-- Start the server on a host in your LAN and set the client env to the LAN IP:
+#### LAN Sharing Example (Team Usage)
+- Start server on LAN host and set client environment variables to LAN IP:
 ```json
 {
   "mcpServers": {
@@ -163,9 +161,9 @@ curl http://localhost:18080/api/v1/health
 }
 ```
 
-Note: With Makefile, you can use `make docker-up` / `make docker-down`.
+Reference: Use Makefile with `make docker-up` / `make docker-down`
 
-## Tech Stack
+## Technology Stack
 
 ### Backend
 
@@ -186,9 +184,9 @@ Note: With Makefile, you can use `make docker-up` / `make docker-down`.
 
 ### Prerequisites
 
-- Go 1.21 or higher
-- Node.js 18 or higher
-- Docker and Docker Compose
+- Go 1.21 or higher installed
+- Node.js 18 or higher installed
+- Docker and Docker Compose installed
 - PostgreSQL 15 or higher (automatically installed with Docker)
 
 ### Initial Admin Account
@@ -200,13 +198,16 @@ The following initial admin account is automatically created on first system sta
 - **Email**: `admin@rulemcp.com`
 - **Role**: Administrator (admin)
 
-**Important**: Please change the password after first login.
+**Important**: Change the password after first login.
 
-### Installation
+### Developer Setup
 
 ```bash
-git clone <repository-url>
-cd RuleMCPServer
+git clone https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git
+cd Rule-MCP-Server
+
+# Copy environment file
+cp env.template .env.production
 
 # Backend dependencies
 go mod tidy
@@ -217,54 +218,38 @@ npm install
 cd ..
 ```
 
-### Running
+### Startup Methods
+
+#### Production Environment (Recommended)
+
+```bash
+# Start with production Docker Compose
+docker compose -f docker-compose.prod.yml up -d
+
+# Stop
+docker compose -f docker-compose.prod.yml down
+```
 
 #### Development Environment
 
 ```bash
-# Backend (safe port 18081)
-PORT=18081 go run ./cmd/server
+# Start with development Docker Compose
+docker compose -f docker-compose.dev.yml up -d
 
-# Frontend
-cd frontend
-npm start
-
-# Using Makefile
-make run        # Development environment (port 18081)
-make run-frontend
+# Stop
+docker compose -f docker-compose.dev.yml down
 ```
 
-#### Production Environment (Docker)
+#### Local Development (Without Docker)
 
 ```bash
-# Create production environment variables file
-cp env.prod.example .env.prod
-# Edit .env.prod file values for production environment
+# Backend (port 18080)
+go run ./cmd/server
 
-# Deploy production environment
-make -f Makefile.prod deploy
-
-# Check production environment status
-make -f Makefile.prod status
-
-# Check production environment logs
-make -f Makefile.prod logs
-
-# Stop production environment
-make -f Makefile.prod down
-
-# Clean up production environment
-make -f Makefile.prod clean
+# Frontend (separate terminal)
+cd frontend
+npm start
 ```
-
-#### Production Environment Features
-
-- **Enhanced Security**: Non-root user execution, environment variable configuration
-- **Performance Optimization**: Multi-stage build, lightweight Alpine Linux
-- **Health Checks**: Service health monitoring
-- **Log Management**: Structured log output and rotation
-- **Backup**: Automatic database backup functionality
-- **Scalability**: Docker Swarm and Kubernetes ready
 
 ## Architecture
 
@@ -384,19 +369,19 @@ GET /api/v1/languages
 
 ## MCP (Model Context Protocol) Server
 
-This server operates as an MCP server, allowing Cursor and Cline to directly retrieve rules.
+This server operates as an MCP server, allowing direct rule retrieval from Cursor and Cline.
 
 ### MCP Endpoints
 
 ```
-POST /mcp/request    # HTTP MCP request
+POST /mcp/request    # HTTP MCP requests
 GET  /mcp/ws         # WebSocket MCP connection
 ```
 
 ### MCP Methods
 
-- **`getRules`**: Get project rules
-- **`validateCode`**: Validate code rule violations
+- **`getRules`**: Retrieve project rules
+- **`validateCode`**: Validate code for rule violations
 - **`getProjectInfo`**: Get project information
 
 ### Standard MCP Server Configuration (Recommended)
@@ -406,17 +391,18 @@ This project provides a **standard MCP (Model Context Protocol) server**.
 #### **Features**
 - ✅ **Standard MCP SDK**: Full compliance using `@modelcontextprotocol/sdk`
 - ✅ **StdioServerTransport**: Compatible with standard MCP clients
-- ✅ **Docker Support**: Stable operation in production
-- ✅ **Template Configuration**: Easy setup
+- ✅ **pnpm package support**: Easy installation with `pnpm dlx`
+- ✅ **Docker support**: Stable operation in production
+- ✅ **Template configuration**: Easy setup
 
-#### **1. MCP Server Installation**
+#### **1. Install MCP Server**
 
-##### **pnpm (Recommended)**
+##### **Via pnpm (Recommended)**
 ```bash
 # Global installation
 pnpm add -g rule-mcp-server
 
-# Or without installation
+# Or via pnpm dlx (no installation required)
 pnpm dlx rule-mcp-server
 ```
 
@@ -431,9 +417,9 @@ make install-mcp
 make build-mcp
 ```
 
-#### **2. Environment-specific Configuration**
+#### **2. Environment-Specific Configuration**
 
-##### **pnpm Package Usage (Recommended)**
+##### **Using pnpm Package (Recommended)**
 ```bash
 # Use pnpm package configuration template
 cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
@@ -517,29 +503,290 @@ Configuration example (Development environment):
 #### **3. Configuration File Placement**
 - **Cursor**: `~/.cursor/mcp_settings.json`
 - **Cline**: `~/.cline/mcp_settings.json`
-- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Claude Code**: Add via CLI (`claude mcp add ...`)
 
 #### **4. Available Tools**
 The standard MCP server provides the following tools:
 
-| Tool Name            | Description                         | Required Parameters         |
-|---------------------|-------------------------------------|----------------------------|
-| `getRules`          | Get project rules                   | `project_id`               |
-| `validateCode`      | Code validation                     | `project_id`, `code`       |
-| `getProjectInfo`    | Get project information             | `project_id`               |
-| `autoDetectProject` | Auto-detect project                 | `path`                     |
-| `scanLocalProjects` | Scan local projects                 | `base_path` (optional)     |
-| `getGlobalRules`    | Get global rules                    | `language`                 |
+| Tool Name            | Description                    | Required Parameters     |
+|---------------------|--------------------------------|------------------------|
+| `getRules`          | Get project rules              | `project_id`           |
+| `validateCode`      | Validate code                  | `project_id`, `code`   |
+| `getProjectInfo`    | Get project information        | `project_id`           |
+| `autoDetectProject` | Auto-detect project            | `path`                 |
+| `scanLocalProjects` | Scan local projects            | `base_path` (optional) |
+| `getGlobalRules`    | Get global rules               | `language`             |
 
 #### **5. Available Resources**
 The standard MCP server provides the following resources:
 
 | Resource URI                      | Description                   |
-|-----------------------------------|-------------------------------|
+|----------------------------------|-------------------------------|
 | `rule://projects/list`           | Project list                  |
 | `rule://{project_id}/rules`      | Project-specific rules        |
 | `rule://{project_id}/info`       | Project information           |
 | `rule://global-rules/{language}` | Language-specific global rules|
+
+### Legacy HTTP Configuration (Compatibility)
+
+For using the legacy HTTP API:
+
+```json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "curl",
+      "args": [
+        "-X", "POST",
+        "-H", "Content-Type: application/json",
+        "-d", "{\"id\":\"${requestId}\",\"method\":\"${method}\",\"params\":${params}}",
+        "http://localhost:18081/mcp/request"
+      ],
+      "env": {
+        "MCP_SERVER_URL": "http://localhost:18081"
+      },
+      "description": "Rule MCP Server for AI agents to retrieve and apply common rules"
+    }
+  }
+}
+```
+
+## MCP (Model Context Protocol) Features
+
+### Basic Features
+
+- **`getRules`**: Retrieve rules by project ID and optional language
+- **`validateCode`**: Validate code for rule violations
+- **`getProjectInfo`**: Get project information
+
+### Project Auto-Detection Feature 🆕
+
+Advanced feature that allows AI agents to **automatically recognize projects** and retrieve appropriate rules.
+
+#### **Auto-Detection Priority**
+
+1. **Directory name-based detection** (95% confidence)
+   - Search using directory name as project ID
+   - Excluded directories: `node_modules`, `vendor`, `dist`, `build`, `target`, `.git`, `.vscode`
+
+2. **Git repository name detection** (90% confidence)
+   - Parse origin URL from `.git/config`
+   - SSH format: `git@github.com:username/repo-name.git`
+   - HTTPS format: `https://github.com/username/repo-name.git`
+
+3. **Language-specific file detection** (85% confidence)
+   - `go.mod` → Go project
+   - `package.json` → Node.js project
+   - `requirements.txt` → Python project
+   - `pom.xml` → Java project
+   - `Cargo.toml` → Rust project
+   - `composer.json` → PHP project
+   - `Gemfile` → Ruby project
+
+4. **Default project** (70% confidence)
+   - Fallback when detection fails
+
+#### **New MCP Methods**
+
+##### **`autoDetectProject`**
+Automatically detects project from specified path.
+
+```json
+{
+  "id": "auto-detect",
+  "method": "autoDetectProject",
+  "params": {
+    "path": "/path/to/your/project"
+  }
+}
+```
+
+**Response example:**
+```json
+{
+  "id": "auto-detect",
+  "result": {
+    "project": {
+      "project_id": "web-app",
+      "name": "Web Application",
+      "language": "javascript"
+    },
+    "rules": [...],
+    "detection_method": "directory_name",
+    "confidence": 0.95,
+    "message": "Project detected from directory name 'web-app'"
+  }
+}
+```
+
+##### **`scanLocalProjects`**
+Recursively scans local directory to detect projects.
+
+```json
+{
+  "id": "scan-local",
+  "method": "scanLocalProjects",
+  "params": {
+    "base_path": "/home/user/projects"
+  }
+}
+```
+
+**Response example:**
+```json
+{
+  "id": "scan-local",
+  "result": {
+    "projects": [
+      {
+        "project": {...},
+        "rules": [...],
+        "detection_method": "git_repository",
+        "confidence": 0.90,
+        "message": "Project detected from Git repository name"
+      }
+    ],
+    "count": 3
+  }
+}
+```
+
+#### **Usage Examples**
+
+##### **Cursor/Cline Configuration**
+
+###### **1. cursor-mcp-config.json (Recommended)**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081",
+        "DB_HOST": "localhost",
+        "DB_PORT": "15432",
+        "DB_USER": "rule_mcp_user",
+        "DB_PASSWORD": "rule_mcp_password",
+        "DB_NAME": "rule_mcp_db"
+      }
+    }
+  }
+}
+```
+
+**File placement:**
+- **Cursor**: `~/.cursor/mcp-servers/rule-mcp.json`
+- **Cline**: `~/.cline/mcp-servers/rule-mcp.json`
+
+###### **2. mcp-client-config.json (Complete version)**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081",
+        "DB_HOST": "localhost",
+        "DB_PORT": "15432",
+        "DB_USER": "rule_mcp_user",
+        "DB_PASSWORD": "rule_mcp_password",
+        "DB_NAME": "rule_mcp_db"
+      },
+      "cwd": "/path/to/your/RuleMCPServer"
+    }
+  }
+}
+```
+
+###### **3. No environment variables (JSON file mode)**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081"
+      }
+    }
+  }
+}
+```
+
+##### **Configuration Explanation**
+
+| Parameter | Description             | Required | Default                    |
+|-----------|-------------------------|----------|----------------------------|
+| `command` | Command to execute      | ✅        | `go`                       |
+| `args`    | Command arguments       | ✅        | `["run", "./cmd/server"]`  |
+| `env`     | Environment variables   | ❌        | None                       |
+| `cwd`     | Working directory       | ❌        | Current directory          |
+
+##### **Environment-Specific Configuration Examples**
+
+###### **Development Environment (JSON file mode)**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081"
+      }
+    }
+  }
+}
+```
+
+###### **Production Environment (PostgreSQL connection)**
+```json
+{
+  "mcpServers": {
+    "rule-mcp": {
+      "command": "go",
+      "args": ["run", "./cmd/server"],
+      "env": {
+        "PORT": "18081",
+        "DB_HOST": "your-db-host",
+        "DB_PORT": "5432",
+        "DB_USER": "your-db-user",
+        "DB_PASSWORD": "your-db-password",
+        "DB_NAME": "your-db-name"
+      }
+    }
+  }
+}
+```
+
+##### **Configuration File Priority**
+
+1. **Project-specific**: `./cursor-mcp-config.json`
+2. **User settings**: `~/.cursor/mcp-servers/rule-mcp.json`
+3. **Global settings**: `~/.cursor/mcp-servers/rule-mcp.json`
+
+##### **Troubleshooting**
+
+###### **Common Issues and Solutions**
+
+| Issue                      | Cause                | Solution                    |
+|----------------------------|----------------------|-----------------------------|
+| `Method not found`         | Old MCP handler      | Restart server              |
+| `Connection refused`       | Port in use          | Check with `lsof -i :18081` |
+| `Database connection failed` | DB connection misconfig | Check environment variables |
+| `Permission denied`        | File permissions     | Grant execute permission with `chmod +x` |
+
+##### **AI Agent Auto-Detection**
+AI agents can automatically recognize projects as follows:
+
+1. **Automatic working directory detection**
+2. **Appropriate rule set retrieval**
+3. **Language-specific rule application**
+4. **Project-specific rule application**
+
+This allows AI agents to **always apply appropriate rules** for code review and suggestions **without understanding context**.
 
 ## Frontend Features
 
@@ -556,31 +803,31 @@ Supports the following languages:
 
 ### Theme Switching
 
-- **Light Theme**: Bright and readable
-- **Dark Theme**: Eye-friendly night mode
-- **Automatic Settings Save**: Saved to browser localStorage
+- **Light theme**: Bright and readable
+- **Dark theme**: Eye-friendly night mode
+- **Automatic setting save**: Saved to browser localStorage
 
 ### Web UI Features
 
-- **Project Management**: Create, edit, delete
-- **Rule Management**: Project-specific rules, global rules
-- **Code Validation**: Real-time rule violation checking
-- **Responsive Design**: Mobile and tablet support
+- **Project management**: Create, edit, delete
+- **Rule management**: Project-specific rules, global rules
+- **Code validation**: Real-time rule violation checking
+- **Responsive design**: Mobile and tablet support
 
 ## Rule Definition
 
 ### Rule Creation Items
 
-1. **Rule ID**: Unique identifier for the rule (e.g., `no-console-log`)
-2. **Name**: Display name for the rule (e.g., `No Console Log`)
-3. **Description**: Rule content, purpose, and reason (e.g., `Console.log statements should not be in production code`)
+1. **Rule ID**: Unique rule identifier (e.g., `no-console-log`)
+2. **Name**: Rule display name (e.g., `No Console Log`)
+3. **Description**: Rule content, purpose, reason (e.g., `Console.log statements should not be in production code`)
 4. **Type**: Rule category (naming, formatting, security, performance, etc.)
 5. **Severity**: Importance level (error, warning, info)
 6. **Pattern**: Regular expression pattern to detect (e.g., `console\.log`)
-7. **Message**: Correction instructions for violations (e.g., `Console.log detected. Use proper logging framework in production.`)
-8. **Active**: Rule enabled/disabled
+7. **Message**: Fix instruction for violations (e.g., `Console.log detected. Use proper logging framework in production.`)
+8. **Active**: Rule enable/disable
 
-### Sample Rules
+### Sample Rule
 
 ```json
 {
@@ -628,18 +875,354 @@ To avoid port conflicts for developers, the following ports are used:
 
 This avoids conflicts with common ports (8080, 5432, 3000).
 
-## 🚀 Quick Start
+### Startup Examples
 
-### pnpm Package Usage (Recommended)
+#### Local Development
 
 ```bash
-# 1. Install MCP server (or auto-install with pnpm dlx)
+# Backend (development environment)
+PORT=18081 go run ./cmd/server
+
+# Frontend
+cd frontend && npm start
+
+# Using Makefile
+make run           # Backend (port 18081)
+make run-frontend  # Frontend
+make run-prod      # Production environment (port 18080)
+```
+
+#### Using Docker
+
+```bash
+# Build Docker image
+make docker-build
+
+# Start services
+make docker-up
+
+# Stop services
+make docker-down
+
+# Check logs
+make docker-logs
+
+# Clean up resources
+make docker-clean
+```
+
+## Development
+
+### Testing
+
+```bash
+# Backend tests
+go test ./...
+
+# Frontend tests
+cd frontend && npm test
+```
+
+### Building
+
+```bash
+# Backend
+go build -o rule-mcp-server ./cmd/server
+
+# Frontend
+cd frontend && npm run build
+```
+
+### Code Quality
+
+```bash
+# Go language quality check
+make glb
+
+# Full repository quality check
+make glb_repo
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Database Connection Error
+
+```bash
+# Restart database container
+docker-compose restart postgres
+
+# Complete database recreation
+docker-compose down -v
+docker-compose up -d postgres
+```
+
+#### 2. Port Conflict
+
+```bash
+# Check ports in use
+lsof -i :18081
+lsof -i :13000
+
+# Start on different port
+PORT=18082 go run ./cmd/server
+```
+
+#### 3. MCP Server Not Responding
+
+```bash
+# Check server startup
+curl http://localhost:18081/api/v1/health
+
+# Test MCP endpoint
+curl -X POST http://localhost:18081/mcp/request \
+  -H "Content-Type: application/json" \
+  -d '{"id":"test","method":"getRules","params":{"project_id":"web-app"}}'
+```
+
+#### 4. Frontend Build Error
+
+```bash
+# Reinstall dependencies
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### 5. Authentication Error
+
+```bash
+# Check API key
+curl -H "X-API-Key: your_api_key" http://localhost:18081/api/v1/projects
+
+# Check permission level
+curl -H "X-API-Key: your_api_key" http://localhost:18081/api/v1/auth/me
+```
+
+### Log Checking
+
+```bash
+# Backend logs
+docker logs rule-mcp-server
+
+# Database logs
+docker logs rule-mcp-postgres
+
+# Frontend logs
+cd frontend && npm start
+```
+
+## Permission Management System
+
+### Access Levels
+
+Rule MCP Server provides three access levels:
+
+#### **Public (Open)**
+- **Authentication**: Not required
+- **Permissions**: View public rules/projects, code validation
+- **Use case**: Personal use, open source projects
+- **MCP access**: No restrictions (with rate limiting)
+
+#### **User**
+- **Authentication**: API key required
+- **Permissions**: Create, edit, delete personal rules/projects
+- **Use case**: Individual developers, small teams
+- **MCP access**: No restrictions
+
+#### **Admin**
+- **Authentication**: Admin API key required
+- **Permissions**: Full permissions (user management, global rule management)
+- **Use case**: Team leaders, system administrators
+- **MCP access**: No restrictions
+
+### Authentication Methods
+
+#### **API Key Authentication**
+```bash
+# Header authentication
+curl -H "X-API-Key: your_api_key" http://localhost:18081/api/v1/projects
+
+# MCP request authentication
+curl -X POST http://localhost:18081/mcp/request \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"test","method":"createRule","params":{...}}'
+```
+
+#### **Session Authentication**
+```bash
+# Login
+curl -X POST http://localhost:18081/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user","password":"password"}'
+
+# Session authentication
+curl -H "Cookie: session=session_token" http://localhost:18081/api/v1/projects
+```
+
+### Team Collaboration Features
+
+#### **Project Member Management**
+```bash
+# Add team member
+curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
+  -H "X-API-Key: admin_key" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"developer1","role":"member"}'
+
+# Check team member permissions
+curl http://localhost:18081/api/v1/projects/team-project/members \
+  -H "X-API-Key: user_key"
+```
+
+#### **Project Visibility**
+- **Public**: Viewable by all users
+- **Team**: Viewable only by team members
+- **Private**: Viewable only by project owner
+
+#### **Permission Granularity**
+```json
+{
+  "permissions": {
+    "read": true,    // View rules/projects
+    "write": true,   // Create/edit rules/projects
+    "delete": false, // Delete rules/projects
+    "admin": false   // Member management
+  }
+}
+```
+
+## Configuration Files
+
+### **Authentication Configuration** (`config/auth.yaml`)
+Defines permission levels, rate limiting, security settings
+
+### **Environment Variables** (`config/environment.md`)
+List of environment variables for server, database, authentication, MCP configuration
+
+### **MCP Client Configuration**
+- **`config/simple-mcp-config.json`**: Simple MCP configuration (no authentication, beginner-friendly)
+- **`config/mcp-client-config.json`**: Complete MCP configuration (authentication and team features)
+
+### **Database Schema** (`init.sql`)
+Complete schema including permission management tables, user management, team collaboration features
+
+## Security Features
+
+### **Rate Limiting**
+- **Public**: 50 req/min (limited)
+- **User**: 100 req/min
+- **Admin**: 200 req/min
+
+### **Audit Logging**
+- Authentication attempt records
+- Permission change records
+- Rule change records
+- Retention period: 365 days
+
+### **Password Policy**
+- Minimum 8 characters
+- Uppercase, lowercase, numbers, special characters required
+- Session timeout: 8 hours
+
+### **API Key Security**
+- bcrypt hashing
+- Expiration settings
+- HTTPS required (production)
+- Usage logging
+
+## Usage Examples
+
+### **Personal Use (Public)**
+```bash
+# Get rules without authentication
+curl http://localhost:18081/api/v1/rules?project_id=web-app
+
+# Code validation via MCP
+curl -X POST http://localhost:18081/mcp/request \
+  -H "Content-Type: application/json" \
+  -d '{"id":"test","method":"validateCode","params":{"project_id":"web-app","code":"console.log(\"test\")"}}'
+```
+
+### **Team Use (User/Admin)**
+```bash
+# Create rule with API key
+curl -X POST http://localhost:18081/api/v1/rules \
+  -H "X-API-Key: user_key" \
+  -H "Content-Type: application/json" \
+  -d '{"project_id":"team-project","rule_id":"no-todo","name":"No TODO","type":"quality","severity":"warning","pattern":"TODO:","message":"TODO comment detected"}'
+
+# Team member management
+curl -X POST http://localhost:18081/api/v1/projects/team-project/members \
+  -H "X-API-Key: admin_key" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"new_dev","role":"member"}'
+```
+
+### **MCP Client Configuration**
+
+#### Cursor
+```json
+// ~/.cursor/mcp.json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "rule-mcp-server"
+      ],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+#### Claude Desktop
+```json
+// ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "rule-mcp-server": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "rule-mcp-server"
+      ],
+      "env": {
+        "RULE_SERVER_URL": "http://localhost:18080",
+        "MCP_API_KEY": "${MCP_API_KEY:-}"
+      },
+      "description": "Standard MCP Server for Rule Management - provides coding rules and validation tools for AI agents",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+Note: `MCP_API_KEY` works without setting (Public access). Set only when using team operations or management APIs.
+
+## 🚀 Quick Start
+
+### Using pnpm Package (Recommended)
+
+```bash
+# 1. Install MCP server (or auto-install via pnpm dlx)
 pnpm add -g rule-mcp-server
 
 # 2. Create configuration file
 cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 
-# 3. Start using with AI agents (Cursor/Cline)!
+# 3. Start using with AI agents (Cursor/Claude Desktop/Cline)!
 ```
 
 **📦 npm package**: Published as [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
@@ -671,7 +1254,7 @@ cp config/docker-mcp-config.template.json ~/.cursor/mcp_settings.json
 go mod tidy
 cd frontend && npm install && cd ..
 
-# 2. Start servers
+# 2. Start server
 make run        # Backend (port 18081)
 make run-frontend  # Frontend (port 3000)
 
@@ -685,32 +1268,36 @@ cp config/standard-mcp-config.template.json ~/.cursor/mcp_settings.json
 ## 🌟 Key Features
 
 ### ✅ Standard MCP Compliance
-- **Full MCP Compatibility**: Using `@modelcontextprotocol/sdk`
-- **Standard Tools & Resources**: Perfect integration with AI agents
+
+- **Full MCP compatibility**: Using `@modelcontextprotocol/sdk`
+- **Standard tools and resources**: Perfect integration with AI agents
 - **StdioServerTransport**: Standard communication protocol
 
 ### ✅ Rich Features
-- **6 MCP Tools**: Rule retrieval, code validation, project auto-detection, etc.
-- **5 MCP Resources**: Project list, rule information, global rules
-- **Project Auto-detection**: AI automatically applies appropriate rules
+
+- **6 MCP tools**: Rule retrieval, code validation, project auto-detection, etc.
+- **5 MCP resources**: Project list, rule information, global rules
+- **Project auto-detection**: AI automatically applies appropriate rules
 
 ### ✅ Production Ready
-- **Docker Environment**: Stable production operation
+
+- **Docker environment**: Stable production operation
 - **PostgreSQL**: High-performance database
-- **Authentication & Authorization**: API key, session authentication
-- **Multi-language Support**: 6 language support (Japanese, English, Chinese, etc.)
+- **Authentication & Authorization**: API keys, session authentication
+- **Multi-language support**: 6 language support (Japanese, English, Chinese, etc.)
 
 ### ✅ Developer Friendly
-- **Clean Architecture**: Highly maintainable design
+
+- **Clean architecture**: High maintainability design
 - **Web UI**: React-based management interface
-- **Template Configuration**: Easy setup
-- **Comprehensive Documentation**: Detailed usage instructions
+- **Template configuration**: Easy setup
+- **Rich documentation**: Detailed usage instructions
 
 ## 🎯 Use Cases
 
 ### Individual Developers
 ```bash
-# Simple usage without authentication
+# Easy use without authentication
 curl http://localhost:18080/api/v1/rules?project_id=my-project
 ```
 
@@ -739,12 +1326,14 @@ curl -H "X-API-Key: team_key" http://localhost:18080/api/v1/projects
 ## 📊 System Requirements
 
 ### Minimum Requirements
+
 - **OS**: Linux, macOS, Windows
 - **Go**: 1.21+
 - **Node.js**: 18+
 - **Docker**: 20.10+ (recommended)
 
 ### Recommended Requirements
+
 - **Memory**: 2GB or more
 - **Storage**: 1GB or more
 - **CPU**: 2 cores or more
@@ -765,7 +1354,7 @@ git checkout -b feature/your-feature
 make deps
 make install-mcp
 
-# 4. Start development servers
+# 4. Start development server
 make run
 make run-frontend
 ```
@@ -863,8 +1452,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - **💬 Discord**: [Rule MCP Server Community](https://discord.gg/dCAUC8m6dw)
 - **🐦 X (formerly Twitter)**: [@_sakuraba_akito](https://x.com/_sakuraba_akito)
 
-
-## 📋 Contributing Guidelines
+## 📋 Contribution Guidelines
 
 ### Contribution Flow
 
@@ -882,18 +1470,53 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ## 🔒 Security
 
-If you discover a security issue, please follow the instructions in [SECURITY.md](SECURITY.md).
+If you discover security issues, please report them following the instructions in [SECURITY.md](SECURITY.md).
 
 ## 📝 Code of Conduct
 
-This project follows the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+This project follows [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## 📈 Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for the latest changes.
+See [CHANGELOG.md](CHANGELOG.md) for the latest changelog.
 
 ---
 
 **⭐ If this project is helpful, please give it a star on GitHub!**
 
 **🚀 Let's achieve better code quality through AI agent integration!**
+
+## GitHub Repository
+
+This project is hosted on GitHub: [https://github.com/AkitoSakurabaCreator/Rule-MCP-Server](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server)
+
+### Repository Information
+
+- **Repository**: [AkitoSakurabaCreator/Rule-MCP-Server](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server)
+- **License**: MIT
+- **Language**: TypeScript (46.3%), Go (40.6%), HTML (4.5%), JavaScript (4.3%), MDX (2.7%), CSS (0.8%), Other (0.8%)
+- **Stars**: 0
+- **Forks**: 0
+- **Issues**: 0
+- **Pull Requests**: 0
+
+### Getting Started with GitHub
+
+1. **Star the repository** if you find it useful
+2. **Fork the repository** to contribute
+3. **Create issues** for bug reports or feature requests
+4. **Submit pull requests** for contributions
+5. **Join discussions** for questions and ideas
+
+### Development
+
+- **Clone**: `git clone https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git`
+- **Contribute**: Follow the contribution guidelines
+- **Report Issues**: Use GitHub Issues
+- **Discuss**: Use GitHub Discussions
+
+### Community
+
+- **Discord**: [Rule MCP Server Community](https://discord.gg/dCAUC8m6dw)
+- **Twitter**: [@_sakuraba_akito](https://x.com/_sakuraba_akito)
+- **GitHub**: [@AkitoSakurabaCreator](https://github.com/AkitoSakurabaCreator)
