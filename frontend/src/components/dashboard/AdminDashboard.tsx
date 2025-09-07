@@ -75,6 +75,7 @@ interface User {
   id: number;
   username: string;
   email: string;
+  fullName?: string;
   role: string;
   status?: string;
   lastLogin: string;
@@ -146,6 +147,7 @@ const AdminDashboard: React.FC = () => {
   const [openAddRole, setOpenAddRole] = useState(false);
   const [openEditRole, setOpenEditRole] = useState<null | RoleType>(null);
   const [roleForm, setRoleForm] = useState<RoleType>({ name: '', description: '', permissions: { manage_users: false, manage_rules: true, manage_roles: false }, is_active: true });
+  const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const applyPreset = (preset: 'readonly' | 'editor' | 'admin') => {
     if (preset === 'readonly') setRoleForm((r) => ({ ...r, permissions: { manage_users: false, manage_rules: false, manage_roles: false } }));
     if (preset === 'editor') setRoleForm((r) => ({ ...r, permissions: { manage_users: false, manage_rules: true, manage_roles: false } }));
@@ -161,7 +163,7 @@ const AdminDashboard: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const [s, u, k, m, logs, perf, conf, langs] = await Promise.all([
+        const [s, u, k, m, logs, perf, conf, langs, pending] = await Promise.all([
           adminApi.getStats(),
           canManageUsers ? adminApi.getUsers() : Promise.resolve([]),
           adminApi.getApiKeys(),
@@ -170,6 +172,7 @@ const AdminDashboard: React.FC = () => {
           adminApi.getMCPPerformance(),
           adminApi.getSettings(),
           adminApi.getLanguages(),
+          canManageUsers ? adminApi.getPendingUsers() : Promise.resolve([]),
         ]);
         const rls = canManageRoles ? await adminApi.getRoles() : [];
         if (!mounted) return;
@@ -179,6 +182,7 @@ const AdminDashboard: React.FC = () => {
             id: x.id,
             username: x.username,
             email: x.email,
+            fullName: x.fullName,
             role: x.role,
             status: x.isActive ? 'active' : 'inactive',
             lastLogin: x.lastLogin,
@@ -204,6 +208,17 @@ const AdminDashboard: React.FC = () => {
         const rpm = parseInt((conf as any).requestsPerMinute || '100', 10) || 100;
         setSettings({ defaultAccessLevel: da, requestsPerMinute: rpm });
         setLanguages(Array.isArray(langs) ? langs : []);
+        setPendingUsers(
+          (pending as any[]).map((x: any) => ({
+            id: x.id,
+            username: x.username,
+            email: x.email,
+            fullName: x.fullName,
+            role: x.role,
+            status: 'pending',
+            lastLogin: x.createdAt,
+          }))
+        );
       } catch (e: any) {
         setError(e?.message || 'Failed to load admin data');
       } finally {
@@ -445,6 +460,12 @@ const AdminDashboard: React.FC = () => {
             iconPosition="start"
           />
           <Tab 
+            icon={<PeopleIcon />} 
+            label="承認待ちユーザー" 
+            iconPosition="start"
+            disabled={!canManageUsers}
+          />
+          <Tab 
             icon={<SecurityIcon />} 
             label={t('dashboard.apiKeys')} 
             iconPosition="start"
@@ -540,7 +561,7 @@ const AdminDashboard: React.FC = () => {
                         setUserForm({
                           username: user.username,
                           email: user.email,
-                          fullName: '',
+                          fullName: user.fullName || '',
                           role: user.role,
                           isActive: user.status === 'active',
                         });
@@ -572,8 +593,86 @@ const AdminDashboard: React.FC = () => {
           </Table>
         </TableContainer>
       </TabPanel>
+
+      {/* 承認待ちユーザー管理タブ */}
+      <TabPanel value={tabValue} index={1}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5">
+            承認待ちユーザー管理
+          </Typography>
+        </Box>
+        
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ユーザー名</TableCell>
+                <TableCell>メールアドレス</TableCell>
+                <TableCell>フルネーム</TableCell>
+                <TableCell>登録日時</TableCell>
+                <TableCell>操作</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pendingUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.fullName || '-'}</TableCell>
+                  <TableCell>{new Date(user.lastLogin).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      sx={{ mr: 1 }}
+                      onClick={async () => {
+                        try {
+                          await adminApi.approveUser(user.id, true);
+                          setPendingUsers(prev => prev.filter(u => u.id !== user.id));
+                          setSnackbar({ open: true, message: 'ユーザーを承認しました', severity: 'success' });
+                        } catch (e: any) {
+                          setSnackbar({ open: true, message: e?.message || '承認に失敗しました', severity: 'error' });
+                        }
+                      }}
+                    >
+                      承認
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      onClick={async () => {
+                        if (!window.confirm('このユーザーを拒否しますか？')) return;
+                        try {
+                          await adminApi.approveUser(user.id, false);
+                          setPendingUsers(prev => prev.filter(u => u.id !== user.id));
+                          setSnackbar({ open: true, message: 'ユーザーを拒否しました', severity: 'success' });
+                        } catch (e: any) {
+                          setSnackbar({ open: true, message: e?.message || '拒否に失敗しました', severity: 'error' });
+                        }
+                      }}
+                    >
+                      拒否
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        
+        {pendingUsers.length === 0 && (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="body1" color="text.secondary">
+              承認待ちのユーザーはありません
+            </Typography>
+          </Box>
+        )}
+      </TabPanel>
+
       {/* 言語管理タブ */}
-      <TabPanel value={tabValue} index={7}>
+      <TabPanel value={tabValue} index={8}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5">{t('dashboard.languages')}</Typography>
           {canManageRoles && (
@@ -669,7 +768,7 @@ const AdminDashboard: React.FC = () => {
       </TabPanel>
 
       {/* APIキー管理タブ */}
-      <TabPanel value={tabValue} index={1}>
+      <TabPanel value={tabValue} index={2}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5">
             {t('dashboard.apiKeyManagement')}
@@ -850,7 +949,7 @@ const AdminDashboard: React.FC = () => {
       </Dialog>
 
       {/* 設定タブ */}
-      <TabPanel value={tabValue} index={2}>
+      <TabPanel value={tabValue} index={3}>
         <Typography variant="h5" sx={{ mb: 3 }}>
           {t('dashboard.systemSettings')}
         </Typography>
@@ -901,7 +1000,7 @@ const AdminDashboard: React.FC = () => {
       </TabPanel>
 
       {/* アナリティクスタブ */}
-      <TabPanel value={tabValue} index={3}>
+      <TabPanel value={tabValue} index={4}>
         <Typography variant="h5" sx={{ mb: 3 }}>
           {t('dashboard.systemAnalytics')}
         </Typography>
@@ -942,7 +1041,7 @@ const AdminDashboard: React.FC = () => {
       </TabPanel>
 
       {/* MCP監視タブ */}
-      <TabPanel value={tabValue} index={4}>
+      <TabPanel value={tabValue} index={5}>
         <Typography variant="h5" sx={{ mb: 3 }}>
           {t('dashboard.mcpMonitoring')}
         </Typography>
@@ -1004,7 +1103,7 @@ const AdminDashboard: React.FC = () => {
       </TabPanel>
 
       {/* システムログタブ */}
-      <TabPanel value={tabValue} index={5}>
+      <TabPanel value={tabValue} index={6}>
         <Typography variant="h5" sx={{ mb: 3 }}>
           {t('dashboard.systemLogs')}
         </Typography>
@@ -1104,6 +1203,7 @@ const AdminDashboard: React.FC = () => {
                   id: created.id,
                   username: created.username,
                   email: created.email,
+                  fullName: created.fullName,
                   role: created.role,
                   status: created.isActive ? 'active' : 'inactive',
                   lastLogin: created.lastLogin,
@@ -1161,6 +1261,7 @@ const AdminDashboard: React.FC = () => {
                   id: updated.id,
                   username: updated.username,
                   email: updated.email,
+                  fullName: updated.fullName,
                   role: updated.role,
                   status: updated.isActive ? 'active' : 'inactive',
                   lastLogin: updated.lastLogin,
@@ -1176,7 +1277,7 @@ const AdminDashboard: React.FC = () => {
       </Dialog>
 
       {/* Roles 管理タブ */}
-      <TabPanel value={tabValue} index={6}>
+      <TabPanel value={tabValue} index={7}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5">
             {t('dashboard.roles') || 'Roles'}
