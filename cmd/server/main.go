@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
@@ -21,6 +22,8 @@ import (
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ActiveTracker struct {
@@ -43,6 +46,30 @@ func (t *ActiveTracker) CountSince(d time.Duration) int {
 	return c
 }
 
+// generateRandomSecret generates a cryptographically secure random secret
+func generateRandomSecret(length int) string {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		log.Fatal("Failed to generate random secret:", err)
+	}
+	return hex.EncodeToString(bytes)
+}
+
+// hashAPIKey hashes an API key using bcrypt
+func hashAPIKey(apiKey string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(apiKey), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedBytes), nil
+}
+
+// verifyAPIKey verifies an API key against its hash
+func verifyAPIKey(apiKey, hashedKey string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedKey), []byte(apiKey))
+	return err == nil
+}
+
 // generateRandomString セキュアな乱数で英数字文字列を生成
 func generateRandomString(length int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -60,6 +87,14 @@ func generateRandomString(length int) string {
 }
 
 func main() {
+	// .envファイルを読み込み（存在しない場合は無視）
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found or could not be loaded: %v", err)
+		log.Println("Continuing with system environment variables...")
+	} else {
+		log.Println("Successfully loaded .env file")
+	}
+
 	cfg := config.LoadConfig()
 
 	var projectRepo domain.ProjectRepository
@@ -88,6 +123,7 @@ func main() {
 		userRepo = database.NewPostgresUserRepository(db.DB)
 		roleRepo = database.NewPostgresRoleRepository(db.DB)
 		metricsRepo = database.NewPostgresMetricsRepository(db.DB)
+
 	}
 
 	if cfg.IsProduction() {
@@ -103,14 +139,28 @@ func main() {
 		log.Fatal("ALLOWED_ORIGINS must be set in production")
 	}
 	r.Use(func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+
 		if allowedOrigins != "" {
 			parts := strings.Split(allowedOrigins, ",")
-			c.Header("Access-Control-Allow-Origin", strings.TrimSpace(parts[0]))
+			allowed := false
+			for _, part := range parts {
+				if strings.TrimSpace(part) == origin {
+					allowed = true
+					break
+				}
+			}
+			if allowed {
+				c.Header("Access-Control-Allow-Origin", origin)
+			}
 		} else {
 			c.Header("Access-Control-Allow-Origin", "*")
 		}
+
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		c.Header("Access-Control-Allow-Credentials", "true")
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
 			return
@@ -123,7 +173,10 @@ func main() {
 		log.Fatal("JWT_SECRET must be set in production")
 	}
 	if jwtSecret == "" {
-		jwtSecret = "default-secret-key-change-in-production"
+		// 開発環境用のランダム生成（本番環境では必ず環境変数で設定）
+		jwtSecret = generateRandomSecret(32)
+		log.Printf("Generated development JWT secret: %s", jwtSecret)
+		log.Println("WARNING: This is a development secret. In production, set JWT_SECRET environment variable.")
 	}
 	r.Use(func(c *gin.Context) {
 		c.Set("userRole", "public")
@@ -272,7 +325,13 @@ func main() {
 				return
 			}
 			apiKey := fmt.Sprintf("%s_%d_%s", req.AccessLevel, time.Now().Unix(), generateRandomString(16))
-			_, err := db.DB.Exec(`INSERT INTO api_keys (key_hash, name, access_level, is_active, created_by, created_at, updated_at) VALUES ($1, $2, $3, true, $4, NOW(), NOW())`, apiKey, req.Name, req.AccessLevel, "admin")
+			// APIキーをハッシュ化して保存
+			hashedKey, err := hashAPIKey(apiKey)
+			if err != nil {
+				httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "Failed to hash API key", err.Error())
+				return
+			}
+			_, err = db.DB.Exec(`INSERT INTO api_keys (key_hash, name, access_level, is_active, created_by, created_at, updated_at) VALUES ($1, $2, $3, true, $4, NOW(), NOW())`, hashedKey, req.Name, req.AccessLevel, "admin")
 			if err != nil {
 				httpx.JSONFromError(c, err)
 				return
