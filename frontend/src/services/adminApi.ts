@@ -192,4 +192,14 @@ export const adminApi = {
   deleteLanguage: async (code: string): Promise<void> => {
     await api.delete(`/languages/${encodeURIComponent(code)}`);
   },
+
+  // 一括エクスポート・インポート
+  bulkExportRules: async (params: { format: string; scope: string }): Promise<any> => {
+    const response = await api.post('/admin/bulk-export', params);
+    return response.data;
+  },
+  bulkImportRules: async (params: { data: any; overwrite: boolean }): Promise<any> => {
+    const response = await api.post('/admin/bulk-import', params);
+    return response.data;
+  },
 };

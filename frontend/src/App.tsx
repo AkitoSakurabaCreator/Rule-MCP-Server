@@ -18,6 +18,7 @@ import CodeValidator from './components/CodeValidator';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import AdminDashboard from './components/dashboard/AdminDashboard';
+import UserProfile from './components/UserProfile';
 
 const AppContent: React.FC = () => {
   const { i18n } = useTranslation();
@@ -167,6 +168,14 @@ const AppContent: React.FC = () => {
                   <Header />
                   <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
                     <CodeValidator />
+                  </Container>
+                </>
+              } />
+              <Route path="/profile" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <UserProfile />
                   </Container>
                 </>
               } />

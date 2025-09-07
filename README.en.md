@@ -20,7 +20,11 @@ A MCP (Model Context Protocol) server that allows AI agents (Cursor, Claude Code
 
 ## 🚀 Quick Start
 
-### 1. Install MCP Server
+### Pattern 1: Server Already Running
+
+If the Rule MCP Server is already running, you only need to configure your AI agent.
+
+#### 1. Install MCP Server
 
 ```bash
 # Via pnpm dlx (recommended, no installation required)
@@ -30,15 +34,15 @@ pnpm dlx rule-mcp-server
 pnpm add -g rule-mcp-server
 ```
 
-### 2. Configure AI Agent
+#### 2. Configure AI Agent
 
-#### Cursor
+##### Cursor
 ```bash
 # Copy configuration template
 cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 ```
 
-#### Claude Code
+##### Claude Code
 ```bash
 # Add MCP server to Claude Code (stdio)
 claude mcp add rule-mcp-server --env RULE_SERVER_URL=http://localhost:18080 -- pnpm dlx rule-mcp-server
@@ -53,7 +57,7 @@ claude mcp add rule-mcp-server \
 # https://docs.anthropic.com/ja/docs/claude-code/mcp
 ```
 
-### 3. Start Using!
+#### 3. Start Using!
 
 Restart your AI agent (Cursor/Claude Code) and it will automatically retrieve and apply coding rules.
 
@@ -61,28 +65,88 @@ Restart your AI agent (Cursor/Claude Code) and it will automatically retrieve an
 
 Note: `MCP_API_KEY` is optional (Public access works without it). Set it only for team operations or when using management APIs.
 
-### Server Requirement and Startup (Important)
+---
 
-The MCP client configuration assumes the backend Rule MCP Server is running.
+### Pattern 2: Set Up Your Own Server
 
-#### Health Check
+If you want to set up and run your own Rule MCP Server, follow these steps. **We recommend using the production environment.**
+
+#### 1. Environment Setup
+
 ```bash
+# Create production environment file
+cp env.production.example .env.production
+
+# Edit .env.production file as needed
+nano .env.production
+```
+
+**Required settings for production:**
+- `JWT_SECRET`: Strong random string (generation methods below)
+- `ALLOWED_ORIGINS`: Comma-separated list of allowed origins
+- `ENV=production`: Set to production mode
+
+**Secret key generation methods:**
+```bash
+# Using OpenSSL
+openssl rand -hex 32
+
+# Using Python
+python3 -c "import secrets; print(secrets.token_hex(32))"
+
+# Using Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+#### 2. Server Startup
+
+##### Production Environment (Recommended)
+```bash
+# Start with production Docker Compose
+docker compose -f docker-compose.prod.yml up -d
+
+# Health check
 curl http://localhost:18080/api/v1/health
 # -> {"status":"ok"} means the server is running
 ```
 
-#### If the server is not running (Local via Docker)
+**Production Environment Access:**
+- Web UI: http://localhost:13000
+- API: http://localhost:18080/api/v1
+- Database: localhost:15432
+
+##### Development Environment (For Developers)
 ```bash
-# Get the repository
-git clone https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git
-cd Rule-MCP-Server
+# Create development environment file
+cp env.development.example .env.development
 
-# Start with Docker (recommended)
-docker compose up -d
+# Start with development Docker Compose
+docker compose -f docker-compose.dev.yml up -d
 
-# Stop
-docker compose down
+# Health check
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} means the server is running
 ```
+
+**Development Environment Access:**
+- Web UI: http://localhost:13000
+- API: http://localhost:18080/api/v1
+- Database: localhost:15432
+
+##### Team Operation
+```bash
+# Start with production setup (for team sharing)
+docker compose -f docker-compose.prod.yml up -d
+
+# Health check
+curl http://localhost:18080/api/v1/health
+# -> {"status":"ok"} means the server is running
+```
+
+**Team Operation Access:**
+- Web UI: http://[server-ip]:13000
+- API: http://[server-ip]:18080/api/v1
+- Database: [server-ip]:15432
 
 #### LAN exposure example (team operation)
 - Start the server on a host in your LAN and set the client env to the LAN IP:
@@ -799,9 +863,6 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - **💬 Discord**: [Rule MCP Server Community](https://discord.gg/dCAUC8m6dw)
 - **🐦 X (formerly Twitter)**: [@_sakuraba_akito](https://x.com/_sakuraba_akito)
 
-### Project Support
-
-- **💖 Sponsor**: [GitHub Sponsors](https://github.com/sponsors/AkitoSakurabaCreator)
 
 ## 📋 Contributing Guidelines
 

@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
@@ -45,7 +48,7 @@ type Claims struct {
 // ChangePasswordRequest パスワード変更リクエスト
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"currentPassword" binding:"required"`
-	NewPassword     string `json:"newPassword" binding:"required,min=8"`
+	NewPassword     string `json:"newPassword" binding:"required,min=12"`
 }
 
 // ApproveUserRequest ユーザー承認リクエスト
@@ -60,6 +63,54 @@ func NewAuthHandler(jwtSecret string, userRepo domain.UserRepository, roleRepo d
 		userRepo:  userRepo,
 		roleRepo:  roleRepo,
 	}
+}
+
+// validatePasswordStrength パスワードの複雑性要件を検証
+func validatePasswordStrength(password string) error {
+	if len(password) < 12 {
+		return fmt.Errorf("パスワードは12文字以上である必要があります")
+	}
+
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsDigit(char):
+			hasDigit = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecial = true
+		}
+	}
+
+	if !hasUpper {
+		return fmt.Errorf("パスワードには大文字を含める必要があります")
+	}
+	if !hasLower {
+		return fmt.Errorf("パスワードには小文字を含める必要があります")
+	}
+	if !hasDigit {
+		return fmt.Errorf("パスワードには数字を含める必要があります")
+	}
+	if !hasSpecial {
+		return fmt.Errorf("パスワードには特殊文字を含める必要があります")
+	}
+
+	// Check for common patterns
+	commonPatterns := []string{
+		"password", "123456", "qwerty", "admin", "user",
+		"letmein", "welcome", "monkey", "dragon", "master",
+	}
+	lowerPassword := strings.ToLower(password)
+	for _, pattern := range commonPatterns {
+		if strings.Contains(lowerPassword, pattern) {
+			return fmt.Errorf("パスワードには一般的な単語やパターンを含めることはできません")
+		}
+	}
+
+	return nil
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -122,12 +173,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func (h *AuthHandler) Logout(c *gin.Context) {
+	// ログアウトは基本的にクライアント側でトークンを削除するだけ
+	// サーバー側では特に何もする必要がない（JWTはステートレス）
+	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
+}
+
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req struct {
 		Username string `json:"username" binding:"required"`
 		Email    string `json:"email" binding:"required"`
 		FullName string `json:"full_name"`
-		Password string `json:"password" binding:"required,min=8"`
+		Password string `json:"password" binding:"required,min=12"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
@@ -145,6 +202,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	existingEmail, err := h.userRepo.GetByEmail(req.Email)
 	if err == nil && existingEmail != nil {
 		httpx.JSONError(c, http.StatusConflict, httpx.CodeValidation, "Email already exists", nil)
+		return
+	}
+
+	// パスワードの強度を検証
+	if err := validatePasswordStrength(req.Password); err != nil {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, err.Error(), nil)
 		return
 	}
 
@@ -232,6 +295,12 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword))
 	if err != nil {
 		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Current password is incorrect", nil)
+		return
+	}
+
+	// 新しいパスワードの強度を検証
+	if err := validatePasswordStrength(req.NewPassword); err != nil {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, err.Error(), nil)
 		return
 	}
 

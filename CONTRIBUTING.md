@@ -10,6 +10,7 @@
 
 ## Pull Request
 - fork → feature ブランチ作成 → PR
+- **PRの向き先は `dev` ブランチに設定してください**
 - Lint・テストを通してからPR
 - コミットは Conventional Commits を推奨
 

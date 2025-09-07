@@ -137,7 +137,7 @@ func main() {
 				if claims.Role != "" {
 					c.Set("userRole", claims.Role)
 				}
-				// permissions lookup with fallback
+				// 権限の検索（フォールバック付き）
 				perm := map[string]bool{"manage_users": false, "manage_rules": false, "manage_roles": false}
 				loaded := false
 				if roleRepo != nil {
@@ -157,7 +157,7 @@ func main() {
 					}
 				}
 				c.Set("permissions", perm)
-				// track active session
+				// アクティブセッションを追跡
 				activeTracker.Touch(claims.Username)
 			}
 		}
@@ -171,6 +171,7 @@ func main() {
 	auth := r.Group("/api/v1/auth")
 	{
 		auth.POST("/login", authHandler.Login)
+		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/register", authHandler.Register)
 		auth.GET("/validate", authHandler.ValidateToken)
 		auth.GET("/me", authHandler.Me)
@@ -196,9 +197,9 @@ func main() {
 				adminHandler.GetStats(c)
 				return
 			}
-			// reuse existing but override some fields
-			// call original to compute counts
-			// For simplicity, call handler then mutate response is complex; instead, implement small inline
+			// 既存のものを再利用するが、一部のフィールドを上書き
+			// カウントを計算するために元のハンドラーを呼び出し
+			// シンプルにするため、ハンドラーを呼び出してからレスポンスを変更するのは複雑なので、代わりに小さなインライン実装を行う
 			users, _ := userRepo.GetAll()
 			projects, _ := projectRepo.GetAll()
 			totalRules := 0
@@ -211,7 +212,7 @@ func main() {
 				mcpCount, _ = metricsRepo.GetMCPRequestsCountLast24h()
 			}
 			active := activeTracker.CountSince(10 * time.Minute)
-			// System load (approximate percent): loadavg1 / NumCPU * 100
+			// システム負荷（概算パーセント）: loadavg1 / NumCPU * 100
 			sysLoad := ""
 			if b, err := os.ReadFile("/proc/loadavg"); err == nil {
 				parts := strings.Fields(string(b))
@@ -229,7 +230,7 @@ func main() {
 		admin.POST("/users", adminHandler.CreateUser)
 		admin.PUT("/users/:id", adminHandler.UpdateUser)
 		admin.DELETE("/users/:id", adminHandler.DeleteUser)
-		// Real API keys from DB
+		// データベースからの実際のAPIキー
 		admin.GET("/api-keys", func(c *gin.Context) {
 			if db == nil || db.DB == nil {
 				c.JSON(http.StatusOK, []gin.H{})
@@ -292,7 +293,7 @@ func main() {
 			}
 			c.JSON(http.StatusOK, gin.H{"message": "API Key deleted successfully"})
 		})
-		// Update API key (name/description/is_active)
+		// APIキーの更新（name/description/is_active）
 		admin.PUT("/api-keys/:id", func(c *gin.Context) {
 			if db == nil || db.DB == nil {
 				httpx.JSONError(c, http.StatusServiceUnavailable, httpx.CodeInternal, "Database not available", nil)
@@ -334,7 +335,7 @@ func main() {
 			}
 			c.JSON(http.StatusOK, gin.H{"message": "API Key updated"})
 		})
-		// Settings: simple key-value store
+		// 設定: シンプルなキー・バリューストア
 		admin.GET("/settings", func(c *gin.Context) {
 			if db == nil || db.DB == nil {
 				c.JSON(http.StatusOK, gin.H{"defaultAccessLevel": "public", "requestsPerMinute": 100})
@@ -384,7 +385,7 @@ func main() {
 			}
 			c.JSON(http.StatusOK, s)
 		})
-		// MCP performance aggregates (avg, success rate, error rate, p95) over last 24h
+		// MCPパフォーマンス集計（平均、成功率、エラー率、p95）過去24時間
 		admin.GET("/mcp-performance", func(c *gin.Context) {
 			if db == nil || db.DB == nil {
 				c.JSON(http.StatusOK, gin.H{"avgMs": 0, "successRate": 0, "errorRate": 0, "p95Ms": 0})
@@ -415,7 +416,7 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"avgMs": avgMs, "successRate": succRate, "errorRate": errRate, "p95Ms": int(p95 + 0.5)})
 		})
 		admin.GET("/system-logs", func(c *gin.Context) {
-			// Return recent MCP request logs as system logs
+			// 最近のMCPリクエストログをシステムログとして返す
 			if db == nil || db.DB == nil {
 				c.JSON(http.StatusOK, []gin.H{})
 				return
@@ -487,10 +488,10 @@ func main() {
 			api.POST("/global-rules/import", globalRuleHandler.ImportGlobalRules)
 		}
 
-		// MCP endpoints
+		// MCPエンドポイント
 		projectDetector := usecase.NewProjectDetector(projectRepo, ruleRepo)
 		mcpHandler := handler.NewMCPHandler(ruleUseCase, globalRuleUseCase, projectDetector)
-		// inject metrics repo via setter
+		// セッター経由でメトリクスリポジトリを注入
 		mcpHandler.SetMetricsRepo(metricsRepo)
 		mcp := r.Group("/mcp")
 		{

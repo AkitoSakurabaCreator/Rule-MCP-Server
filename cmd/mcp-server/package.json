@@ -1,6 +1,6 @@
 {
   "name": "rule-mcp-server",
-  "version": "1.0.4",
+  "version": "1.0.10",
   "description": "Rule MCP Server for AI agents to retrieve and apply coding rules",
   "type": "module",
   "main": "build/index.js",
@@ -34,7 +34,20 @@
     "ai",
     "coding-rules",
     "cursor",
-    "cline"
+    "cline",
+    "claude-code"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "homepage": "https://github.com/AkitoSakurabaCreator/Rule-MCP-Server",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/issues"
+  },
+  "author": {
+    "name": "AkitoSakurabaCreator",
+    "email": "sakurabaakito@kaede-creation.com"
+  }
 }
