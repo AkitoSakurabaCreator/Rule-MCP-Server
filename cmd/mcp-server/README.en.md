@@ -3,27 +3,59 @@
 [![npm version](https://badge.fury.io/js/rule-mcp-server.svg)](https://badge.fury.io/js/rule-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A MCP (Model Context Protocol) server that allows AI agents (Cursor, Cline) to retrieve and apply common coding rules.
+A MCP (Model Context Protocol) server that allows AI agents (Cursor, Claude Code, Cline) to retrieve and apply common coding rules.
 
 **📦 npm package**: Published as [rule-mcp-server](https://www.npmjs.com/package/rule-mcp-server)
 
-## Installation
+## 🚀 Quick Start
 
-### pnpm (Recommended)
+### Pattern 1: Server Already Running
+
+If the Rule MCP Server is already running, you only need to configure your AI agent.
+
+#### 1. Installation
 
 ```bash
+# Via pnpm dlx (recommended, no installation required)
+pnpm dlx rule-mcp-server
+
+# Or global installation
 pnpm add -g rule-mcp-server
 ```
 
-### pnpm dlx (No Installation Required)
+#### 2. AI Agent Configuration
 
+##### Cursor
 ```bash
-pnpm dlx rule-mcp-server
+# Copy configuration template
+cp config/pnpm-mcp-config.template.json ~/.cursor/mcp.json
 ```
 
-## Usage
+##### Claude Code
+```bash
+# Add MCP server to Claude Code (stdio)
+claude mcp add rule-mcp-server --env RULE_SERVER_URL=http://localhost:18080 -- pnpm dlx rule-mcp-server
 
-### Cursor / Claude Code Configuration
+# With API key
+claude mcp add rule-mcp-server \
+  --env RULE_SERVER_URL=http://localhost:18080 \
+  --env MCP_API_KEY=your_api_key \
+  -- pnpm dlx rule-mcp-server
+```
+
+#### 3. Start Using!
+
+Restart your AI agent (Cursor/Claude Code) and it will automatically retrieve and apply coding rules.
+
+---
+
+### Pattern 2: Set Up Your Own Server
+
+If you want to set up and run your own Rule MCP Server, please refer to the [main repository](https://github.com/AkitoSakurabaCreator/Rule-MCP-Server).
+
+## Configuration Examples
+
+### Cursor Configuration
 
 Add the following to `~/.cursor/mcp.json`:
 
@@ -45,7 +77,7 @@ Add the following to `~/.cursor/mcp.json`:
 }
 ```
 
-#### Claude Code
+### Claude Code Configuration
 
 ```bash
 # Add MCP server to Claude Code (stdio)
