@@ -38,11 +38,17 @@ i18n
     fallbackLng: 'en',
     debug: process.env.NODE_ENV === 'development',
     
+    // サポートする言語の制限（トップレベルで設定）
+    supportedLngs: ['en', 'ja', 'zh-CN', 'hi', 'es', 'ar'],
+    
+    // 言語コードの正規化（トップレベルで設定）
+    load: 'languageOnly',
+    
     // 開発環境でのデバッグ情報
     ...(process.env.NODE_ENV === 'development' && {
       saveMissing: true,
-      missingKeyHandler: (lng: string, ns: string, key: string) => {
-        console.warn(`Missing translation: ${lng}.${ns}.${key}`);
+      missingKeyHandler: (lngs: readonly string[], ns: string, key: string, fallbackValue: string, updateMissing: boolean, options: any) => {
+        console.warn(`Missing translation: ${lngs.join(',')}.${ns}.${key}`);
       },
     }),
 
@@ -60,12 +66,6 @@ i18n
       lookupQuerystring: 'lng',
       lookupFromPathIndex: 0,
       lookupFromSubdomainIndex: 0,
-      
-      // サポートする言語の制限
-      supportedLngs: ['en', 'ja', 'zh-CN', 'hi', 'es', 'ar'],
-      
-      // 言語コードの正規化
-      load: 'languageOnly',
       
       // ブラウザの言語コードをアプリの言語コードにマッピング
       convertDetectedLanguage: (lng: string) => {
