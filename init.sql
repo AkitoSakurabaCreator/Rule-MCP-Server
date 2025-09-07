@@ -165,7 +165,7 @@ ON CONFLICT (project_id) DO NOTHING;
 
 -- Insert initial admin account (default password: admin123)
 INSERT INTO users (username, email, full_name, role, password_hash) VALUES
-    ('admin', 'admin@rulemcp.com', 'System Administrator', 'admin', '$2a$10$.zED/crcQ.p9trkDD1RYs.9gkSuZ6rLdp0LwGQg4m01J.JNFvs9H2')
+    ('admin', 'admin@rulemcp.com', 'System Administrator', 'admin', '$2a$10$wu49VbkfGB5ntaFy8EMwTOp8/OUa//pO1t7pwqVylrHZ2OwiprSsW')
 ON CONFLICT (username) DO NOTHING;
 
 -- Sample users removed - only admin account is created by default
