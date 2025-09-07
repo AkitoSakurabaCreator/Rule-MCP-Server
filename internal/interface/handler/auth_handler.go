@@ -65,7 +65,7 @@ func NewAuthHandler(jwtSecret string, userRepo domain.UserRepository, roleRepo d
 	}
 }
 
-// validatePasswordStrength validates password complexity requirements
+// validatePasswordStrength パスワードの複雑性要件を検証
 func validatePasswordStrength(password string) error {
 	if len(password) < 12 {
 		return fmt.Errorf("パスワードは12文字以上である必要があります")
