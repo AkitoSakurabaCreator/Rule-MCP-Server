@@ -62,7 +62,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        REACT_APP_API_URL: http://localhost:13000/api/v1
+        REACT_APP_API_URL: http://localhost:18000/api/v1
     container_name: rule-manager-ui-prod
     ports:
       - "13000:80"  # 標準80を避けて13000を使用
