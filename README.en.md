@@ -110,8 +110,8 @@ curl http://localhost:18080/api/v1/health
 ```
 
 **Production access:**
-- Web UI: http://localhost:13000
-- API: http://localhost:18080/api/v1
+- Web UI: http://localhost:18000
+- API: http://localhost:18000/api/v1
 - Database: localhost:15432
 
 ##### Development Environment (For Developers)
@@ -128,8 +128,8 @@ curl http://localhost:18080/api/v1/health
 ```
 
 **Development access:**
-- Web UI: http://localhost:13000
-- API: http://localhost:18080/api/v1
+- Web UI: http://localhost:18000
+- API: http://localhost:18000/api/v1
 - Database: localhost:15432
 
 ##### Team Usage

@@ -110,8 +110,8 @@ curl http://localhost:18080/api/v1/health
 ```
 
 **本番環境のアクセス:**
-- Web UI: http://localhost:13000
-- API: http://localhost:18080/api/v1
+- Web UI: http://localhost:18000
+- API: http://localhost:18000/api/v1
 - データベース: localhost:15432
 
 ##### 開発環境での起動（開発者向け）
@@ -128,8 +128,8 @@ curl http://localhost:18080/api/v1/health
 ```
 
 **開発環境のアクセス:**
-- Web UI: http://localhost:13000
-- API: http://localhost:18080/api/v1
+- Web UI: http://localhost:18000
+- API: http://localhost:18000/api/v1
 - データベース: localhost:15432
 
 ##### チーム運用での起動

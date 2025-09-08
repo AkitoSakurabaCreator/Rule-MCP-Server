@@ -99,7 +99,7 @@ MCP_PROTECTED_METHODS=createRule,updateRule,deleteRule,createProject,updateProje
 ```bash
 # CORS Configuration
 CORS_ENABLED=true
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:13000,http://localhost:13001
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:13000,http://localhost:18000
 CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
 CORS_ALLOWED_HEADERS=Content-Type,Authorization,X-API-Key
 ```
