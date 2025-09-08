@@ -103,14 +103,27 @@ func main() {
 		log.Fatal("ALLOWED_ORIGINS must be set in production")
 	}
 	r.Use(func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
 		if allowedOrigins != "" {
 			parts := strings.Split(allowedOrigins, ",")
-			c.Header("Access-Control-Allow-Origin", strings.TrimSpace(parts[0]))
+			allowed := false
+			for _, part := range parts {
+				if strings.TrimSpace(part) == origin {
+					allowed = true
+					break
+				}
+			}
+			if allowed {
+				c.Header("Access-Control-Allow-Origin", origin)
+			} else {
+				c.Header("Access-Control-Allow-Origin", strings.TrimSpace(parts[0]))
+			}
 		} else {
 			c.Header("Access-Control-Allow-Origin", "*")
 		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		c.Header("Access-Control-Allow-Credentials", "true")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
 			return

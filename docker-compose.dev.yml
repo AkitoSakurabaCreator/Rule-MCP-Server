@@ -51,7 +51,7 @@ services:
       - ENV=development
       - DEBUG=true
       - LOG_LEVEL=debug
-      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:13000,http://localhost:18080
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:13000,http://localhost:18080,http://localhost:18000
     depends_on:
       postgres:
         condition: service_healthy
