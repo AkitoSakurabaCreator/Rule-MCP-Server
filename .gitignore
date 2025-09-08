@@ -80,7 +80,6 @@ mysql-data/
 # Docker
 .dockerignore
 docker-compose.override.yml
-docker-compose.*.yml
 !docker-compose.yml
 
 # Temporary files
