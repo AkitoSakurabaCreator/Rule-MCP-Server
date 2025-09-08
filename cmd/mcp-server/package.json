@@ -1,11 +1,11 @@
 {
   "name": "rule-mcp-server",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Rule MCP Server for AI agents to retrieve and apply coding rules",
   "type": "module",
   "main": "build/index.js",
   "bin": {
-    "rule-mcp-server": "./build/index.js"
+    "rule-mcp-server": "build/index.js"
   },
   "files": [
     "build/",
@@ -41,7 +41,7 @@
   "homepage": "https://github.com/AkitoSakurabaCreator/Rule-MCP-Server",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git"
+    "url": "git+https://github.com/AkitoSakurabaCreator/Rule-MCP-Server.git"
   },
   "bugs": {
     "url": "https://github.com/AkitoSakurabaCreator/Rule-MCP-Server/issues"
