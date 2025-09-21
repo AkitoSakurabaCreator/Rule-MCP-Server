@@ -68,7 +68,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:18000/api/v1}
+        - REACT_APP_API_URL=http://localhost:18000/api/v1
+        # - REACT_APP_API_URL=http://192.168.1.100:18000/api/v1 # LAN内アクセス用
     container_name: rule-manager-ui-dev
     ports:
       - "13000:80"  # 開発用ポート
