@@ -30,6 +30,8 @@ services:
     container_name: rule-mcp-server-prod
     ports:
       - "18080:8080"  # 標準8080を避けて18080を使用
+    env_file:
+      - .env.production  # 本番環境用の環境変数ファイル
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -38,9 +40,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-rule_mcp_password}
       - PORT=8080
       - ENVIRONMENT=production
-      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:13000,http://localhost:18080,http://localhost:18000}
+      # JWT_SECRET, LOG_LEVEL, ALLOWED_ORIGINS は .env.production ファイルから読み込み
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,7 +62,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        REACT_APP_API_URL: http://localhost:18000/api/v1
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:18000/api/v1}
     container_name: rule-manager-ui-prod
     ports:
       - "13000:80"  # 標準80を避けて13000を使用
