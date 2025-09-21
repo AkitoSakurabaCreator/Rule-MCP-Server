@@ -51,7 +51,7 @@ services:
       - ENV=development
       - DEBUG=true
       - LOG_LEVEL=debug
-      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:13000,http://localhost:18080,http://localhost:18000
+      # ALLOWED_ORIGINS は .env.development ファイルから読み込み
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,11 +67,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:18000/api/v1}
     container_name: rule-manager-ui-dev
     ports:
       - "13000:80"  # 開発用ポート
     environment:
-      - REACT_APP_API_URL=http://localhost:18080/api/v1
       - NODE_ENV=development
     depends_on:
       - rule-mcp-server
