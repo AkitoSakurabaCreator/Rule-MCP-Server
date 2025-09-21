@@ -39,6 +39,10 @@ func (uc *ProjectUseCase) GetProjects() ([]*domain.Project, error) {
 	return uc.projectRepo.GetAll()
 }
 
+func (uc *ProjectUseCase) GetByID(projectID string) (*domain.Project, error) {
+	return uc.projectRepo.GetByID(projectID)
+}
+
 func (uc *ProjectUseCase) UpdateProject(projectID, name, description, language string, applyGlobalRules bool) error {
 	project, err := uc.projectRepo.GetByID(projectID)
 	if err != nil {

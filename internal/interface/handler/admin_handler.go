@@ -677,6 +677,29 @@ func (h *AdminHandler) BulkImport(c *gin.Context) {
 	if projectRules, ok := req.Data["projectRules"].(map[string]interface{}); ok {
 		for projectID, projectData := range projectRules {
 			if projectInfo, ok := projectData.(map[string]interface{}); ok {
+				// プロジェクトの存在確認と作成
+				projectName, _ := projectInfo["name"].(string)
+				if projectName == "" {
+					projectName = projectID
+				}
+				projectDescription, _ := projectInfo["description"].(string)
+				projectLanguage, _ := projectInfo["language"].(string)
+				if projectLanguage == "" {
+					projectLanguage = "general"
+				}
+				applyGlobalRules, _ := projectInfo["apply_global_rules"].(bool)
+
+				// プロジェクトが存在しない場合は作成
+				_, err := h.projectUseCase.GetByID(projectID)
+				if err != nil {
+					// プロジェクトを作成
+					err = h.projectUseCase.CreateProject(projectID, projectName, projectDescription, projectLanguage, applyGlobalRules)
+					if err != nil {
+						errors = append(errors, fmt.Sprintf("Failed to create project %s: %v", projectID, err))
+						continue
+					}
+				}
+
 				if rules, ok := projectInfo["rules"].([]interface{}); ok {
 					for _, ruleData := range rules {
 						if rule, ok := ruleData.(map[string]interface{}); ok {
