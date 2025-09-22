@@ -50,3 +50,14 @@ type ProjectRules struct {
 	ProjectID string `json:"project_id"`
 	Rules     []Rule `json:"rules"`
 }
+
+type Language struct {
+	Code        string    `json:"code"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Icon        string    `json:"icon"`
+	Color       string    `json:"color"`
+	IsActive    bool      `json:"is_active"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}

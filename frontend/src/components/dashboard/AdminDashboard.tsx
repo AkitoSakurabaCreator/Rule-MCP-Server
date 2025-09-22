@@ -178,7 +178,7 @@ const AdminDashboard: React.FC = () => {
         if (!mounted) return;
         setStats(s);
         setUsers(
-          (u as any[]).map((x: any) => ({
+          (u as any[] || []).map((x: any) => ({
             id: x.id,
             username: x.username,
             email: x.email,
@@ -209,7 +209,7 @@ const AdminDashboard: React.FC = () => {
         setSettings({ defaultAccessLevel: da, requestsPerMinute: rpm });
         setLanguages(Array.isArray(langs) ? langs : []);
         setPendingUsers(
-          (pending as any[]).map((x: any) => ({
+          (pending as any[] || []).map((x: any) => ({
             id: x.id,
             username: x.username,
             email: x.email,
@@ -537,7 +537,7 @@ const AdminDashboard: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {users.map((user) => (
+              {(users || []).map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>{user.username}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -614,7 +614,7 @@ const AdminDashboard: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {pendingUsers.map((user) => (
+              {(pendingUsers || []).map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>{user.username}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -801,7 +801,7 @@ const AdminDashboard: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {apiKeys.map((apiKey) => (
+              {(apiKeys || []).map((apiKey) => (
                 <TableRow key={apiKey.id}>
                   <TableCell>{apiKey.name}</TableCell>
                   <TableCell>
@@ -1064,7 +1064,7 @@ const AdminDashboard: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {mcpStats.map((row, idx) => (
+                      {(mcpStats || []).map((row, idx) => (
                         <TableRow key={idx}>
                           <TableCell>{row.method}</TableCell>
                           <TableCell>{row.count}</TableCell>
@@ -1300,7 +1300,7 @@ const AdminDashboard: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {roles.map((r) => (
+              {(roles || []).map((r) => (
                 <TableRow key={r.name}>
                   <TableCell>{r.name}</TableCell>
                   <TableCell>{r.description}</TableCell>

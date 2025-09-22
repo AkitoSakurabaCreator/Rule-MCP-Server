@@ -407,17 +407,19 @@ func NewPostgresLanguageRepository(db *sql.DB) domain.LanguageRepository {
 }
 
 func (r *PostgresLanguageRepository) Create(language *domain.Language) error {
-	query := `INSERT INTO languages (code, name, description, icon, color, is_active) VALUES ($1, $2, $3, $4, $5, $6)`
-	_, err := r.DB.Exec(query, language.Code, language.Name, language.Description, language.Icon, language.Color, language.IsActive)
+	query := `INSERT INTO languages (code, name, description, icon, color, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	now := time.Now()
+	_, err := r.DB.Exec(query, language.Code, language.Name, language.Description, language.Icon, language.Color, language.IsActive, now, now)
 	return mapDBError(err)
 }
 
 func (r *PostgresLanguageRepository) GetByCode(code string) (*domain.Language, error) {
-	query := `SELECT code, name, description, icon, color, is_active FROM languages WHERE code = $1`
+	query := `SELECT code, name, description, icon, color, is_active, created_at, updated_at FROM languages WHERE code = $1`
 	var language domain.Language
 	err := r.DB.QueryRow(query, code).Scan(
 		&language.Code, &language.Name, &language.Description,
 		&language.Icon, &language.Color, &language.IsActive,
+		&language.CreatedAt, &language.UpdatedAt,
 	)
 	if err != nil {
 		return nil, mapDBError(err)
@@ -426,7 +428,7 @@ func (r *PostgresLanguageRepository) GetByCode(code string) (*domain.Language, e
 }
 
 func (r *PostgresLanguageRepository) GetAll() ([]*domain.Language, error) {
-	query := `SELECT code, name, description, icon, color, is_active FROM languages ORDER BY name`
+	query := `SELECT code, name, description, icon, color, is_active, created_at, updated_at FROM languages ORDER BY name`
 	rows, err := r.DB.Query(query)
 	if err != nil {
 		return nil, mapDBError(err)
@@ -439,6 +441,7 @@ func (r *PostgresLanguageRepository) GetAll() ([]*domain.Language, error) {
 		err := rows.Scan(
 			&language.Code, &language.Name, &language.Description,
 			&language.Icon, &language.Color, &language.IsActive,
+			&language.CreatedAt, &language.UpdatedAt,
 		)
 		if err != nil {
 			return nil, mapDBError(err)
@@ -449,8 +452,8 @@ func (r *PostgresLanguageRepository) GetAll() ([]*domain.Language, error) {
 }
 
 func (r *PostgresLanguageRepository) Update(language *domain.Language) error {
-	query := `UPDATE languages SET name = $1, description = $2, icon = $3, color = $4, is_active = $5 WHERE code = $6`
-	_, err := r.DB.Exec(query, language.Name, language.Description, language.Icon, language.Color, language.IsActive, language.Code)
+	query := `UPDATE languages SET name = $1, description = $2, icon = $3, color = $4, is_active = $5, updated_at = $6 WHERE code = $7`
+	_, err := r.DB.Exec(query, language.Name, language.Description, language.Icon, language.Color, language.IsActive, time.Now(), language.Code)
 	return mapDBError(err)
 }
 
