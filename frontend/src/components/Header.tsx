@@ -65,6 +65,14 @@ const Header: React.FC = () => {
             {t('navigation.validateCode')}
           </Button>
 
+          <Button
+            color="inherit"
+            startIcon={<LanguageIcon />}
+            onClick={() => navigate('/languages')}
+          >
+            言語管理
+          </Button>
+
           {/* 認証状態に応じたボタン */}
           {isAuthenticated ? (
             <>

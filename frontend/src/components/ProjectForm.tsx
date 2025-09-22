@@ -16,6 +16,15 @@ import { useTranslation } from 'react-i18next';
 import { Project } from '../types';
 import { api } from '../services/api';
 
+interface Language {
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  is_active: boolean;
+}
+
 const ProjectForm: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -23,6 +32,7 @@ const ProjectForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [languages, setLanguages] = useState<Language[]>([]);
 
   const [formData, setFormData] = useState({
     project_id: '',
@@ -33,6 +43,15 @@ const ProjectForm: React.FC = () => {
   });
 
   const isEditMode = Boolean(projectId);
+
+  const loadLanguages = useCallback(async () => {
+    try {
+      const response = await api.get('/languages');
+      setLanguages(response.data.languages.filter((lang: Language) => lang.is_active));
+    } catch (error) {
+      console.error('Failed to load languages:', error);
+    }
+  }, []);
 
   const loadProject = useCallback(async (id: string) => {
     try {
@@ -52,10 +71,11 @@ const ProjectForm: React.FC = () => {
   }, [t]);
 
   useEffect(() => {
+    loadLanguages();
     if (isEditMode && projectId) {
       loadProject(projectId);
     }
-  }, [isEditMode, projectId, loadProject]);
+  }, [isEditMode, projectId, loadProject, loadLanguages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,9 +153,19 @@ const ProjectForm: React.FC = () => {
             required
             helperText={t('projects.languageHelp')}
           >
-            {Object.entries(t('languages', { returnObjects: true })).map(([key, value]) => (
-              <MenuItem key={key} value={key}>
-                {value as string}
+            {languages.map((language) => (
+              <MenuItem key={language.code} value={language.code}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      backgroundColor: language.color,
+                      borderRadius: 0.5,
+                    }}
+                  />
+                  {language.name}
+                </Box>
               </MenuItem>
             ))}
           </TextField>

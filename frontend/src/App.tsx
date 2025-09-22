@@ -19,6 +19,7 @@ import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import AdminDashboard from './components/dashboard/AdminDashboard';
 import UserProfile from './components/UserProfile';
+import LanguageManagement from './components/LanguageManagement';
 
 const AppContent: React.FC = () => {
   const { i18n } = useTranslation();
@@ -196,6 +197,14 @@ const AppContent: React.FC = () => {
                   <Header />
                   <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
                     <UserProfile />
+                  </Container>
+                </>
+              } />
+              <Route path="/languages" element={
+                <>
+                  <Header />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <LanguageManagement />
                   </Container>
                 </>
               } />

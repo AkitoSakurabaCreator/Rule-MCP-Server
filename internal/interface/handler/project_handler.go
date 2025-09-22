@@ -29,6 +29,22 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"projects": projects})
 }
 
+func (h *ProjectHandler) GetProject(c *gin.Context) {
+	projectID := c.Param("project_id")
+	if projectID == "" {
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "project_id is required", nil)
+		return
+	}
+
+	project, err := h.projectUseCase.GetByID(projectID)
+	if err != nil {
+		httpx.JSONFromError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, project)
+}
+
 func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	var req struct {
 		ProjectID        string `json:"project_id" binding:"required"`
