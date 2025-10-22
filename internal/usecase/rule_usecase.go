@@ -105,6 +105,7 @@ func (uc *RuleUseCase) GetProjectRules(projectID string) (*domain.ProjectRules, 
 	}
 
 	if project.ApplyGlobalRules {
+		// プロジェクトの言語のグローバルルールを取得
 		globalRules, err := uc.globalRuleRepo.GetByLanguage(project.Language)
 		if err != nil {
 			return nil, err
@@ -123,6 +124,25 @@ func (uc *RuleUseCase) GetProjectRules(projectID string) (*domain.ProjectRules, 
 				IsActive:    globalRule.IsActive,
 			}
 			projectRules.Rules = append(projectRules.Rules, rule)
+		}
+
+		// 言語非依存の全般的なグローバルルール（general）も取得
+		generalRules, err := uc.globalRuleRepo.GetByLanguage("general")
+		if err == nil { // generalルールが存在しない場合はエラーを無視
+			for _, globalRule := range generalRules {
+				rule := domain.Rule{
+					ProjectID:   projectID,
+					RuleID:      globalRule.RuleID,
+					Name:        globalRule.Name,
+					Description: globalRule.Description,
+					Type:        globalRule.Type,
+					Severity:    globalRule.Severity,
+					Pattern:     globalRule.Pattern,
+					Message:     globalRule.Message,
+					IsActive:    globalRule.IsActive,
+				}
+				projectRules.Rules = append(projectRules.Rules, rule)
+			}
 		}
 	}
 
