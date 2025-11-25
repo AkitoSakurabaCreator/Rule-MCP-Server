@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -122,6 +124,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// データベース接続の確認
 	if h.userRepo == nil {
+		log.Printf("Login attempt failed: database connection not established")
 		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "データベース接続が確立されていません。環境変数を確認してください。", nil)
 		return
 	}
@@ -129,7 +132,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// データベースからユーザーを取得
 	user, err := h.userRepo.GetByUsername(req.Username)
 	if err != nil {
-		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Invalid credentials", nil)
+		// データベース接続エラーとユーザー不存在を区別
+		if err == sql.ErrNoRows {
+			// ユーザーが見つからない場合は認証エラーとして扱う
+			log.Printf("Login attempt failed: user '%s' not found", req.Username)
+			httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Invalid credentials", nil)
+			return
+		}
+		// データベース接続エラーなどの場合は内部エラーとして扱う
+		log.Printf("Database error in Login for user '%s': %v", req.Username, err)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "データベースエラーが発生しました。しばらく待ってから再度お試しください。", nil)
 		return
 	}
 

@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"log"
 	"time"
 
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
@@ -47,6 +48,10 @@ func (r *PostgresUserRepository) GetByUsername(username string) (*domain.User, e
 	)
 
 	if err != nil {
+		// データベース接続エラーの場合はログに記録
+		if err != sql.ErrNoRows {
+			log.Printf("Database error in GetByUsername for user '%s': %v", username, err)
+		}
 		return nil, err
 	}
 
