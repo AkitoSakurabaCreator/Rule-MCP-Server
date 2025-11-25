@@ -53,7 +53,14 @@ func NewPostgresDatabase(host, port, user, password, dbname string) (*PostgresDa
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	// 接続プールの設定を最適化
+	db.SetMaxOpenConns(25)                  // 最大接続数
+	db.SetMaxIdleConns(5)                   // アイドル接続数
+	db.SetConnMaxLifetime(5 * time.Minute)  // 接続の最大生存時間
+	db.SetConnMaxIdleTime(10 * time.Minute) // アイドル接続の最大生存時間
+
 	if err = db.Ping(); err != nil {
+		db.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
