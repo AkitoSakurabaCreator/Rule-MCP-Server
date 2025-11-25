@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,9 +31,12 @@ func RecoveryJSON() gin.HandlerFunc {
 		defer func() {
 			if r := recover(); r != nil {
 				// パニックの詳細をログに出力
-				log.Printf("PANIC RECOVERED: %v\nRequest: %s %s\n", r, c.Request.Method, c.Request.URL.Path)
-				log.Printf("Stack trace would be helpful here")
-				// スタックトレースも出力できるように
+				log.Printf("PANIC RECOVERED: %v", r)
+				log.Printf("Request: %s %s", c.Request.Method, c.Request.URL.Path)
+				log.Printf("RemoteAddr: %s", c.Request.RemoteAddr)
+				// スタックトレースを出力
+				log.Printf("Stack trace:\n%s", debug.Stack())
+				// エラー詳細を出力
 				if err, ok := r.(error); ok {
 					log.Printf("Error details: %+v", err)
 				}
