@@ -120,6 +120,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// データベース接続の確認
+	if h.userRepo == nil {
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "データベース接続が確立されていません。環境変数を確認してください。", nil)
+		return
+	}
+
 	// データベースからユーザーを取得
 	user, err := h.userRepo.GetByUsername(req.Username)
 	if err != nil {

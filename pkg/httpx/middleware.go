@@ -3,6 +3,8 @@ package httpx
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -27,7 +29,14 @@ func RecoveryJSON() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if r := recover(); r != nil {
-				JSONError(c, http.StatusInternalServerError, CodeInternal, "サーバ内部でエラーが発生しました", nil)
+				// パニックの詳細をログに出力
+				log.Printf("PANIC RECOVERED: %v\nRequest: %s %s\n", r, c.Request.Method, c.Request.URL.Path)
+				log.Printf("Stack trace would be helpful here")
+				// スタックトレースも出力できるように
+				if err, ok := r.(error); ok {
+					log.Printf("Error details: %+v", err)
+				}
+				JSONError(c, http.StatusInternalServerError, CodeInternal, fmt.Sprintf("サーバ内部でエラーが発生しました: %v", r), nil)
 			}
 		}()
 		c.Next()
