@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
@@ -53,11 +55,16 @@ func NewPostgresDatabase(host, port, user, password, dbname string) (*PostgresDa
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// 接続プールの設定を最適化
-	db.SetMaxOpenConns(25)                  // 最大接続数
-	db.SetMaxIdleConns(5)                   // アイドル接続数
-	db.SetConnMaxLifetime(5 * time.Minute)  // 接続の最大生存時間
-	db.SetConnMaxIdleTime(10 * time.Minute) // アイドル接続の最大生存時間
+	// 接続プールの設定（環境変数から取得、デフォルト値付き）
+	maxOpenConns := getEnvAsInt("DB_MAX_OPEN_CONNS", 25)
+	maxIdleConns := getEnvAsInt("DB_MAX_IDLE_CONNS", 5)
+	connMaxLifetimeMin := getEnvAsInt("DB_CONN_MAX_LIFETIME_MIN", 5)
+	connMaxIdleTimeMin := getEnvAsInt("DB_CONN_MAX_IDLE_TIME_MIN", 3)
+
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxIdleConns)
+	db.SetConnMaxLifetime(time.Duration(connMaxLifetimeMin) * time.Minute)
+	db.SetConnMaxIdleTime(time.Duration(connMaxIdleTimeMin) * time.Minute)
 
 	if err = db.Ping(); err != nil {
 		db.Close()
@@ -522,4 +529,14 @@ func mapDBError(err error) error {
 		}
 	}
 	return err
+}
+
+// getEnvAsInt は環境変数から整数値を取得する。未設定または不正な場合はデフォルト値を返す。
+func getEnvAsInt(key string, defaultVal int) int {
+	if val := os.Getenv(key); val != "" {
+		if intVal, err := strconv.Atoi(val); err == nil {
+			return intVal
+		}
+	}
+	return defaultVal
 }

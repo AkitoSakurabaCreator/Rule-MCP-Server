@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"errors"
 	"regexp"
 
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
@@ -112,36 +113,19 @@ func (uc *RuleUseCase) GetProjectRules(projectID string) (*domain.ProjectRules, 
 		}
 
 		for _, globalRule := range globalRules {
-			rule := domain.Rule{
-				ProjectID:   projectID,
-				RuleID:      globalRule.RuleID,
-				Name:        globalRule.Name,
-				Description: globalRule.Description,
-				Type:        globalRule.Type,
-				Severity:    globalRule.Severity,
-				Pattern:     globalRule.Pattern,
-				Message:     globalRule.Message,
-				IsActive:    globalRule.IsActive,
-			}
-			projectRules.Rules = append(projectRules.Rules, rule)
+			projectRules.Rules = append(projectRules.Rules, globalRuleToRule(globalRule, projectID))
 		}
 
 		// 言語非依存の全般的なグローバルルール（general）も取得
 		generalRules, err := uc.globalRuleRepo.GetByLanguage("general")
-		if err == nil { // generalルールが存在しない場合はエラーを無視
+		if err != nil {
+			// NotFoundエラーの場合は無視（generalルールが存在しない場合）
+			if !errors.Is(err, apperr.ErrNotFound) {
+				return nil, err
+			}
+		} else {
 			for _, globalRule := range generalRules {
-				rule := domain.Rule{
-					ProjectID:   projectID,
-					RuleID:      globalRule.RuleID,
-					Name:        globalRule.Name,
-					Description: globalRule.Description,
-					Type:        globalRule.Type,
-					Severity:    globalRule.Severity,
-					Pattern:     globalRule.Pattern,
-					Message:     globalRule.Message,
-					IsActive:    globalRule.IsActive,
-				}
-				projectRules.Rules = append(projectRules.Rules, rule)
+				projectRules.Rules = append(projectRules.Rules, globalRuleToRule(globalRule, projectID))
 			}
 		}
 	}
@@ -151,6 +135,21 @@ func (uc *RuleUseCase) GetProjectRules(projectID string) (*domain.ProjectRules, 
 
 func (uc *RuleUseCase) DeleteRule(projectID, ruleID string) error {
 	return uc.ruleRepo.Delete(projectID, ruleID)
+}
+
+// globalRuleToRule はGlobalRuleをRuleに変換するヘルパー関数
+func globalRuleToRule(globalRule *domain.GlobalRule, projectID string) domain.Rule {
+	return domain.Rule{
+		ProjectID:   projectID,
+		RuleID:      globalRule.RuleID,
+		Name:        globalRule.Name,
+		Description: globalRule.Description,
+		Type:        globalRule.Type,
+		Severity:    globalRule.Severity,
+		Pattern:     globalRule.Pattern,
+		Message:     globalRule.Message,
+		IsActive:    globalRule.IsActive,
+	}
 }
 
 func (uc *RuleUseCase) ValidateCode(projectID, code string) (*domain.ValidationResult, error) {

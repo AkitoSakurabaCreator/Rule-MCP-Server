@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/internal/domain"
+	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/apperr"
 	"github.com/AkitoSakurabaCreator/Rule-MCP-Server/pkg/httpx"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -118,14 +119,14 @@ func validatePasswordStrength(password string) error {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, apperr.MsgInvalidRequest, err.Error())
 		return
 	}
 
 	// データベース接続の確認
 	if h.userRepo == nil {
 		log.Printf("Login attempt failed: database connection not established")
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "データベース接続が確立されていません。環境変数を確認してください。", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgDBConnectionNotEstablished, nil)
 		return
 	}
 
@@ -136,25 +137,25 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		if err == sql.ErrNoRows {
 			// ユーザーが見つからない場合は認証エラーとして扱う
 			log.Printf("Login attempt failed: user '%s' not found", req.Username)
-			httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Invalid credentials", nil)
+			httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, apperr.MsgInvalidCredentials, nil)
 			return
 		}
 		// データベース接続エラーなどの場合は内部エラーとして扱う
 		log.Printf("Database error in Login for user '%s': %v", req.Username, err)
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "データベースエラーが発生しました。しばらく待ってから再度お試しください。", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgDBError, nil)
 		return
 	}
 
 	// パスワードを検証
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
 	if err != nil {
-		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Invalid credentials", nil)
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, apperr.MsgInvalidCredentials, nil)
 		return
 	}
 
 	// ユーザーがアクティブかチェック
 	if !user.IsActive {
-		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "アカウントは管理者の承認待ちです。承認後にログインできます。", nil)
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, apperr.MsgAccountPendingApproval, nil)
 		return
 	}
 
@@ -173,7 +174,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(h.jwtSecret)
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "トークン生成に失敗しました", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgTokenGenerationFailed, nil)
 		return
 	}
 
@@ -205,21 +206,21 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Password string `json:"password" binding:"required,min=12"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, apperr.MsgInvalidRequest, err.Error())
 		return
 	}
 
 	// ユーザー名の重複チェック
 	existingUser, err := h.userRepo.GetByUsername(req.Username)
 	if err == nil && existingUser != nil {
-		httpx.JSONError(c, http.StatusConflict, httpx.CodeValidation, "Username already exists", nil)
+		httpx.JSONError(c, http.StatusConflict, httpx.CodeValidation, apperr.MsgUsernameExists, nil)
 		return
 	}
 
 	// メールアドレスの重複チェック
 	existingEmail, err := h.userRepo.GetByEmail(req.Email)
 	if err == nil && existingEmail != nil {
-		httpx.JSONError(c, http.StatusConflict, httpx.CodeValidation, "Email already exists", nil)
+		httpx.JSONError(c, http.StatusConflict, httpx.CodeValidation, apperr.MsgEmailExists, nil)
 		return
 	}
 
@@ -232,7 +233,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	// パスワードをハッシュ化
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "Password hashing failed", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgPasswordHashFailed, nil)
 		return
 	}
 
@@ -248,13 +249,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	err = h.userRepo.Create(user)
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "User creation failed", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgUserCreationFailed, nil)
 		return
 	}
 
 	// 承認待ち状態のため、トークンは生成せずにメッセージのみ返す
 	c.JSON(http.StatusOK, gin.H{
-		"message": "アカウントが作成されました。管理者の承認をお待ちください。",
+		"message": apperr.MsgAccountCreated,
 		"status":  "pending_approval",
 	})
 }
@@ -268,28 +269,28 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	var req ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, apperr.MsgInvalidRequest, err.Error())
 		return
 	}
 
 	// 現在のユーザーIDを取得（JWTから）
 	userID, exists := c.Get("userID")
 	if !exists {
-		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "User not authenticated", nil)
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, apperr.MsgUserNotAuthenticated, nil)
 		return
 	}
 
 	// ユーザーを取得
 	user, err := h.userRepo.GetByID(userID.(int))
 	if err != nil {
-		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "User not found", nil)
+		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, apperr.MsgUserNotFound, nil)
 		return
 	}
 
 	// 現在のパスワードを検証
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword))
 	if err != nil {
-		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "Current password is incorrect", nil)
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, apperr.MsgCurrentPasswordWrong, nil)
 		return
 	}
 
@@ -302,7 +303,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	// 新しいパスワードをハッシュ化
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "Password hashing failed", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgPasswordHashFailed, nil)
 		return
 	}
 
@@ -310,32 +311,32 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	user.PasswordHash = string(hashedPassword)
 	err = h.userRepo.Update(user)
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "Password update failed", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgPasswordUpdateFailed, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": apperr.MsgPasswordChanged})
 }
 
 // ApproveUser ユーザー承認/拒否
 func (h *AuthHandler) ApproveUser(c *gin.Context) {
 	var req ApproveUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, "リクエストデータが不正です", err.Error())
+		httpx.JSONError(c, http.StatusBadRequest, httpx.CodeValidation, apperr.MsgInvalidRequest, err.Error())
 		return
 	}
 
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "管理者権限が必要です", nil)
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, apperr.MsgAdminRequired, nil)
 		return
 	}
 
 	// ユーザーを取得
 	user, err := h.userRepo.GetByID(req.UserID)
 	if err != nil {
-		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "ユーザーが見つかりません", nil)
+		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, apperr.MsgUserNotFound, nil)
 		return
 	}
 
@@ -343,16 +344,16 @@ func (h *AuthHandler) ApproveUser(c *gin.Context) {
 	user.IsActive = req.Approve
 	err = h.userRepo.Update(user)
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "ユーザー承認処理に失敗しました", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgUserApprovalFailed, nil)
 		return
 	}
 
-	action := "承認"
+	msg := apperr.MsgUserApproved
 	if !req.Approve {
-		action = "拒否"
+		msg = apperr.MsgUserRejected
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "ユーザーを" + action + "しました"})
+	c.JSON(http.StatusOK, gin.H{"message": msg})
 }
 
 // GetPendingUsers 承認待ちユーザー一覧取得
@@ -360,14 +361,14 @@ func (h *AuthHandler) GetPendingUsers(c *gin.Context) {
 	// 管理者権限チェック
 	userRole, exists := c.Get("userRole")
 	if !exists || userRole != "admin" {
-		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, "管理者権限が必要です", nil)
+		httpx.JSONError(c, http.StatusForbidden, httpx.CodeForbidden, apperr.MsgAdminRequired, nil)
 		return
 	}
 
 	// 非アクティブユーザーを取得
 	users, err := h.userRepo.GetAll()
 	if err != nil {
-		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, "ユーザー一覧の取得に失敗しました", nil)
+		httpx.JSONError(c, http.StatusInternalServerError, httpx.CodeInternal, apperr.MsgUserListFailed, nil)
 		return
 	}
 
@@ -393,21 +394,21 @@ func (h *AuthHandler) GetPendingUsers(c *gin.Context) {
 func (h *AuthHandler) Me(c *gin.Context) {
 	auth := c.GetHeader("Authorization")
 	if len(auth) <= 7 {
-		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Unauthorized", nil)
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, apperr.MsgUserNotAuthenticated, nil)
 		return
 	}
 	tokenStr := auth[7:]
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) { return h.jwtSecret, nil })
 	if err != nil || !token.Valid {
-		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, "Invalid token", nil)
+		httpx.JSONError(c, http.StatusUnauthorized, httpx.CodeUnauthorized, apperr.MsgInvalidToken, nil)
 		return
 	}
 
 	// データベースから最新のユーザー情報を取得
 	user, err := h.userRepo.GetByID(claims.UserID)
 	if err != nil {
-		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, "User not found", nil)
+		httpx.JSONError(c, http.StatusNotFound, httpx.CodeNotFound, apperr.MsgUserNotFound, nil)
 		return
 	}
 
